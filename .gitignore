@@ -1,0 +1,10 @@
+*.py[co]
+__pycache__
+.env
+build/
+dist/
+*.egg-info/
+htmlcov
+.coverage
+.cache
+.idea
