@@ -64,4 +64,4 @@ class Packet:
         )
 
     async def binary(self, *, fernet: Fernet) -> bytes:
-        return fernet.encrypt(pbjson.dumps(self.__dict__))
+        return fernet.encrypt(pbjson.dumps({TOKENS[k]: v for k, v in self.__dict__.items() if v is not None}))

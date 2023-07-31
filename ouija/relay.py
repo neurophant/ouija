@@ -3,7 +3,7 @@ import logging
 import time
 from typing import Dict, Optional
 
-from .packet import PacketType, Packet
+from .packet import Phase, Packet
 from .primitives import Sent, Received
 from .telemetry import Telemetry
 from .tuning import Tuning
@@ -24,7 +24,7 @@ class Relay(asyncio.DatagramProtocol):
     __proxy_port: int
     __remote_host: str
     __remote_port: int
-    __connected: asyncio.Event
+    __opened: asyncio.Event
     __sent_buf: Dict[int, Sent]
     __sent_seq: int
     __recv_buf: Dict[int, Received]
@@ -52,7 +52,7 @@ class Relay(asyncio.DatagramProtocol):
         self.__proxy_port = proxy_port
         self.__remote_host = remote_host
         self.__remote_port = remote_port
-        self.__connected = asyncio.Event()
+        self.__opened = asyncio.Event()
         self.__sent_buf = dict()
         self.__sent_seq = 0
         self.__recv_buf = dict()
@@ -103,22 +103,22 @@ class Relay(asyncio.DatagramProtocol):
         await self.process(packet=packet)
 
     async def __process(self, *, packet: Packet) -> None:
-        if packet.token != self.__tuning.token:
-            await self.__stop()
-            self.telemetry.token_errors += 1
-            return
-
-        match packet.packet_type:
-            case PacketType.CONNECT:
-                if self.__connected.is_set():
+        match packet.phase:
+            case Phase.OPEN:
+                if self.__opened.is_set():
                     return
                 if packet.ack:
+                    if packet.token != self.__tuning.token:
+                        await self.__stop()
+                        self.telemetry.token_errors += 1
+                        return
+
                     self.__writer.write(packet.data)
                     await self.__writer.drain()
-                    self.__connected.set()
+                    self.__opened.set()
                     self.telemetry.connections += 1
-            case PacketType.DATA:
-                if not self.__connected.is_set():
+            case Phase.DATA:
+                if not self.__opened.is_set():
                     await self.__stop()
                     return
 
@@ -142,18 +142,16 @@ class Relay(asyncio.DatagramProtocol):
                         return
 
                     data_ack_packet = Packet(
-                        token=self.__tuning.token,
-                        packet_type=PacketType.DATA,
+                        phase=Phase.DATA,
                         ack=True,
                         seq=packet.seq,
                     )
                     await self.__sendto(data=await data_ack_packet.binary(fernet=self.__tuning.fernet))
-            case PacketType.DISCONNECT:
+            case Phase.CLOSE:
                 await self.__stop()
                 if not packet.ack:
                     disconnect_ack_packet = Packet(
-                        token=self.__tuning.token,
-                        packet_type=PacketType.DISCONNECT,
+                        phase=Phase.CLOSE,
                         ack=True,
                     )
                     await self.__sendto(data=await disconnect_ack_packet.binary(fernet=self.__tuning.fernet))
@@ -171,7 +169,7 @@ class Relay(asyncio.DatagramProtocol):
             self.telemetry.processing_errors += 1
 
     async def __finish(self) -> None:
-        while self.__connected.is_set() or self.__sent_buf:
+        while self.__opened.is_set() or self.__sent_buf:
             await asyncio.sleep(self.__tuning.timeout)
             for seq in sorted(self.__sent_buf.keys()):
                 delta = int(time.time()) - self.__sent_buf[seq].timestamp
@@ -182,8 +180,7 @@ class Relay(asyncio.DatagramProtocol):
                     self.__sent_buf.pop(seq, None)
 
         disconnect_packet = Packet(
-            token=self.__tuning.token,
-            packet_type=PacketType.DISCONNECT,
+            phase=Phase.CLOSE,
             ack=False,
         )
         await self.__sendto_retry(
@@ -208,21 +205,21 @@ class Relay(asyncio.DatagramProtocol):
         await loop.create_datagram_endpoint(lambda: self, remote_addr=(self.__proxy_host, self.__proxy_port))
 
         connect_packet = Packet(
-            token=self.__tuning.token,
-            packet_type=PacketType.CONNECT,
+            phase=Phase.OPEN,
             ack=False,
+            token=self.__tuning.token,
             host=self.__remote_host,
             port=self.__remote_port,
         )
         if not await self.__sendto_retry(
                 data=await connect_packet.binary(fernet=self.__tuning.fernet),
-                event=self.__connected,
+                event=self.__opened,
         ):
             return
 
         self.__finish_task = loop.create_task(self._finish())
 
-        while self.__connected.is_set():
+        while self.__opened.is_set():
             try:
                 data = await asyncio.wait_for(self.__reader.read(self.__tuning.payload), self.__tuning.timeout)
             except asyncio.TimeoutError:
@@ -232,8 +229,7 @@ class Relay(asyncio.DatagramProtocol):
                 break
 
             data_packet = Packet(
-                token=self.__tuning.token,
-                packet_type=PacketType.DATA,
+                phase=Phase.DATA,
                 ack=False,
                 seq=self.__sent_seq,
                 data=data,
@@ -258,7 +254,7 @@ class Relay(asyncio.DatagramProtocol):
             self.telemetry.streaming_errors += 1
 
     async def __stop(self) -> None:
-        self.__connected.clear()
+        self.__opened.clear()
         if isinstance(self.__writer, asyncio.StreamWriter) and not self.__writer.is_closing():
             self.__writer.close()
             await self.__writer.wait_closed()

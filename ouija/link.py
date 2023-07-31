@@ -27,7 +27,7 @@ class Link:
     __writer: Optional[asyncio.StreamWriter]
     __remote_host: Optional[str]
     __remote_port: Optional[int]
-    __connected: asyncio.Event
+    __opened: asyncio.Event
     __sent_buf: Dict[int, Sent]
     __sent_seq: int
     __recv_buf: Dict[int, Received]
@@ -45,7 +45,7 @@ class Link:
         self.__writer = None
         self.__remote_host = None
         self.__remote_port = None
-        self.__connected = asyncio.Event()
+        self.__opened = asyncio.Event()
         self.__sent_buf = dict()
         self.__sent_seq = 0
         self.__recv_buf = dict()
@@ -72,34 +72,34 @@ class Link:
             return False
 
     async def __process(self, *, packet: Packet) -> None:
-        if packet.token != self.__tuning.token:
-            await self.__stop()
-            self.telemetry.token_errors += 1
-            return
+        match packet.phase:
+            case Phase.OPEN:
+                if packet.token != self.__tuning.token:
+                    await self.__stop()
+                    self.telemetry.token_errors += 1
+                    return
 
-        match packet.packet_type:
-            case PacketType.CONNECT:
-                if not self.__connected.is_set():
+                if not self.__opened.is_set():
                     self.__remote_host = packet.host
                     self.__remote_port = packet.port
 
                     self.__reader, self.__writer = await asyncio.open_connection(self.__remote_host, self.__remote_port)
-                    self.__connected.set()
+                    self.__opened.set()
                     self.__proxy.links[self.__addr] = self
                     loop = asyncio.get_event_loop()
                     self.__stream_task = loop.create_task(self._stream())
                     self.__finish_task = loop.create_task(self._finish())
 
                 connect_ack_packet = Packet(
-                    token=self.__tuning.token,
-                    packet_type=PacketType.CONNECT,
+                    phase=Phase.OPEN,
                     ack=True,
+                    token=self.__tuning.token,
                     data=b'HTTP/1.1 200 Connection Established\r\n\r\n',
                 )
                 await self.__sendto(data=await connect_ack_packet.binary(fernet=self.__tuning.fernet))
                 self.telemetry.connections += 1
-            case PacketType.DATA:
-                if not self.__connected.is_set():
+            case Phase.DATA:
+                if not self.__opened.is_set():
                     await self.__stop()
                     return
 
@@ -123,18 +123,16 @@ class Link:
                         return
 
                     data_ack_packet = Packet(
-                        token=self.__tuning.token,
-                        packet_type=PacketType.DATA,
+                        phase=Phase.DATA,
                         ack=True,
                         seq=packet.seq,
                     )
                     await self.__sendto(data=await data_ack_packet.binary(fernet=self.__tuning.fernet))
-            case PacketType.DISCONNECT:
+            case Phase.CLOSE:
                 await self.__stop()
                 if not packet.ack:
                     disconnect_ack_packet = Packet(
-                        token=self.__tuning.token,
-                        packet_type=PacketType.DISCONNECT,
+                        phase=Phase.CLOSE,
                         ack=True,
                     )
                     await self.__sendto(data=await disconnect_ack_packet.binary(fernet=self.__tuning.fernet))
@@ -152,7 +150,7 @@ class Link:
             self.telemetry.processing_errors += 1
 
     async def __finish(self) -> None:
-        while self.__connected.is_set() or self.__sent_buf:
+        while self.__opened.is_set() or self.__sent_buf:
             await asyncio.sleep(self.__tuning.timeout)
             for seq in sorted(self.__sent_buf.keys()):
                 delta = int(time.time()) - self.__sent_buf[seq].timestamp
@@ -163,8 +161,7 @@ class Link:
                     self.__sent_buf.pop(seq, None)
 
         disconnect_packet = Packet(
-            token=self.__tuning.token,
-            packet_type=PacketType.DISCONNECT,
+            phase=Phase.CLOSE,
             ack=False,
         )
         await self.__sendto_retry(
@@ -185,7 +182,7 @@ class Link:
             await self.__close()
 
     async def __stream(self) -> None:
-        while self.__connected.is_set():
+        while self.__opened.is_set():
             try:
                 data = await asyncio.wait_for(self.__reader.read(self.__tuning.payload), self.__tuning.timeout)
             except asyncio.TimeoutError:
@@ -195,8 +192,7 @@ class Link:
                 break
 
             data_packet = Packet(
-                token=self.__tuning.token,
-                packet_type=PacketType.DATA,
+                phase=Phase.DATA,
                 ack=False,
                 seq=self.__sent_seq,
                 data=data,
@@ -221,7 +217,7 @@ class Link:
             self.telemetry.streaming_errors += 1
 
     async def __stop(self) -> None:
-        self.__connected.clear()
+        self.__opened.clear()
         if isinstance(self.__writer, asyncio.StreamWriter) and not self.__writer.is_closing():
             self.__writer.close()
             await self.__writer.wait_closed()
