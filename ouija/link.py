@@ -195,27 +195,26 @@ class Link:
 
     async def __stream(self) -> None:
         while self.__opened.is_set():
-            data = await self.__reader.read(self.__tuning.buffer)
+            data = await self.__reader.read(self.__tuning.payload)
 
             if data == b'':
                 break
 
-            for idx in range(0, len(data), self.__tuning.payload):
-                data_packet = Packet(
-                    phase=Phase.DATA,
-                    ack=False,
-                    seq=self.__sent_seq,
-                    data=data[idx:idx + self.__tuning.payload],
-                )
-                binary = await data_packet.binary(fernet=self.__tuning.fernet)
-                self.__sent_buf[self.__sent_seq] = Sent(data=binary)
-                await self.__sendto(data=binary)
-                self.__sent_seq += 1
+            data_packet = Packet(
+                phase=Phase.DATA,
+                ack=False,
+                seq=self.__sent_seq,
+                data=data,
+            )
+            binary = await data_packet.binary(fernet=self.__tuning.fernet)
+            self.__sent_buf[self.__sent_seq] = Sent(data=binary)
+            await self.__sendto(data=binary)
+            self.__sent_seq += 1
 
-                if len(self.__sent_buf) >= self.__tuning.capacity:
-                    await self.__terminate()
-                    self.telemetry.sent_buf_overloads += 1
-                    break
+            if len(self.__sent_buf) >= self.__tuning.capacity:
+                await self.__terminate()
+                self.telemetry.sent_buf_overloads += 1
+                break
 
     async def _stream(self) -> None:
         try:

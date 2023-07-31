@@ -4,7 +4,6 @@ from cryptography.fernet import Fernet
 class Tuning:
     fernet: Fernet
     token: str
-    buffer: int
     serving: int
     timeout: int
     payload: int
@@ -16,7 +15,6 @@ class Tuning:
             *,
             fernet: Fernet,
             token: str,
-            buffer: int,
             serving: int,
             timeout: int,
             payload: int,
@@ -25,7 +23,6 @@ class Tuning:
     ) -> None:
         self.fernet = fernet
         self.token = token
-        self.buffer = buffer
         self.serving = serving
         self.timeout = timeout
         self.payload = payload
