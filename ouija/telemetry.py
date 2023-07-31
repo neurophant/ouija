@@ -14,6 +14,7 @@ class Telemetry:
     token_errors: int = 0
     type_errors: int = 0
     timeout_errors: int = 0
+    connection_errors: int = 0
     streaming_errors: int = 0
     finishing_errors: int = 0
     sent_buf_overloads: int = 0
@@ -26,7 +27,7 @@ class Telemetry:
             f'\topened/closed: {self.opened}/{self.closed}\n' \
             f'\tpackets sent/received: {self.packets_sent}/{self.packets_received}\n' \
             f'\tbytes sent/received: {self.bytes_sent}/{self.bytes_received}\n' \
-            f'\tdecoding/processing/token/type/timeout/streaming/finishing errors: ' \
+            f'\tdecoding/processing/token/type/timeout/connection/streaming/finishing errors: ' \
             f'{self.decoding_errors}/{self.processing_errors}/{self.token_errors}/{self.type_errors}/' \
-            f'{self.timeout_errors}/{self.streaming_errors}/{self.finishing_errors}\n' \
+            f'{self.timeout_errors}/{self.connection_errors}/{self.streaming_errors}/{self.finishing_errors}\n' \
             f'\tsent/received buffer overloads: {self.sent_buf_overloads}/{self.recv_buf_overloads}\n'

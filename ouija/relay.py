@@ -228,13 +228,12 @@ class Relay(asyncio.DatagramProtocol):
             if data == b'':
                 break
 
-            for i in range(len(data) // self.__tuning.payload + int(bool(len(data) % self.__tuning.payload))):
-                chunk = data[i * self.__tuning.payload:(i + 1) * self.__tuning.payload]
+            for idx in range(0, len(data), self.__tuning.payload):
                 data_packet = Packet(
                     phase=Phase.DATA,
                     ack=False,
                     seq=self.__sent_seq,
-                    data=chunk,
+                    data=data[idx:idx + self.__tuning.payload],
                 )
                 binary = await data_packet.binary(fernet=self.__tuning.fernet)
                 self.__sent_buf[self.__sent_seq] = Sent(data=binary)
@@ -251,6 +250,8 @@ class Relay(asyncio.DatagramProtocol):
             await asyncio.wait_for(self.__stream(), self.__tuning.serving)
         except asyncio.TimeoutError:
             self.telemetry.timeout_errors += 1
+        except ConnectionError:
+            self.telemetry.connection_errors += 1
         except Exception as e:
             logger.error(e)
             self.telemetry.streaming_errors += 1
