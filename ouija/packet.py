@@ -5,51 +5,62 @@ import pbjson
 from cryptography.fernet import Fernet
 
 
-class PacketType(IntEnum):
-    CONNECT = 1
+class Phase(IntEnum):
+    OPEN = 1
     DATA = 2
-    DISCONNECT = 3
+    CLOSE = 3
+
+
+TOKENS = {
+    'phase': 'pe',
+    'ack': 'ak',
+    'token': 'tn',
+    'host': 'ht',
+    'port': 'pt',
+    'seq': 'sq',
+    'data': 'da',
+}
 
 
 class Packet:
-    token: str
-    packet_type: PacketType
+    phase: Phase
     ack: bool
-    seq: Optional[int]
+    token: Optional[str]
     host: Optional[str]
     port: Optional[int]
+    seq: Optional[int]
     data: Optional[bytes]
 
     def __init__(
             self, 
             *, 
-            token: str,
-            packet_type: PacketType, 
+            phase: Phase,
             ack: bool,
-            seq: Optional[int] = None, 
+            token: Optional[str] = None,
             host: Optional[str] = None,
             port: Optional[int] = None,
+            seq: Optional[int] = None,
             data: Optional[bytes] = None,
     ) -> None:
-        self.token = token
-        self.packet_type = packet_type
+        self.phase = phase
         self.ack = ack
-        self.seq = seq
+        self.token = token
         self.host = host
         self.port = port
+        self.seq = seq
         self.data = data
 
     @classmethod
     async def packet(cls, *, data: bytes, fernet: Fernet) -> 'Packet':
         json = pbjson.loads(fernet.decrypt(data))
         return Packet(
-            token=json['token'],
-            packet_type=json['packet_type'],
-            ack=json['ack'],
-            seq=json['seq'],
-            host=json['host'],
-            port=json['port'],
-            data=json['data'],
+            phase=json.get(TOKENS['phase']),
+            ack=json.get(TOKENS['ack']),
+            token=json.get(TOKENS['token'], None),
+            host=json.get(TOKENS['host'], None),
+            port=json.get(TOKENS['port'], None),
+            seq=json.get(TOKENS['seq'], None),
+            data=json.get(TOKENS['data'], None),
         )
 
     async def binary(self, *, fernet: Fernet) -> bytes:

@@ -3,7 +3,7 @@ import time
 from typing import Dict, Tuple, Optional
 import logging
 
-from .packet import Packet, PacketType
+from .packet import Packet, Phase
 from .primitives import Sent, Received
 from .telemetry import Telemetry
 from .tuning import Tuning
