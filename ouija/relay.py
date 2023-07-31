@@ -27,10 +27,11 @@ class Relay(asyncio.DatagramProtocol):
     __opened: asyncio.Event
     __sent_buf: Dict[int, Sent]
     __sent_seq: int
+    __read_closed: asyncio.Event
     __recv_buf: Dict[int, Received]
     __recv_seq: int
+    __write_closed: asyncio.Event
     __finish_task: Optional[asyncio.Task]
-    __disconnected: asyncio.Event
 
     def __init__(
             self, 
@@ -55,10 +56,11 @@ class Relay(asyncio.DatagramProtocol):
         self.__opened = asyncio.Event()
         self.__sent_buf = dict()
         self.__sent_seq = 0
+        self.__read_closed = asyncio.Event()
         self.__recv_buf = dict()
         self.__recv_seq = 0
+        self.__write_closed = asyncio.Event()
         self.__finish_task = None
-        self.__disconnected = asyncio.Event()
 
     def connection_made(self, transport) -> None:
         self.transport = transport
@@ -72,7 +74,7 @@ class Relay(asyncio.DatagramProtocol):
 
     def connection_lost(self, exc) -> None:
         loop = asyncio.get_event_loop()
-        loop.create_task(self.__stop())
+        loop.create_task(self.__terminate())
 
     async def __sendto(self, *, data: bytes) -> None:
         self.transport.sendto(data)
@@ -105,21 +107,22 @@ class Relay(asyncio.DatagramProtocol):
     async def __process(self, *, packet: Packet) -> None:
         match packet.phase:
             case Phase.OPEN:
+                print(packet.__dict__)
+                if packet.token != self.__tuning.token:
+                    await self.__terminate()
+                    self.telemetry.token_errors += 1
+                    return
+
                 if self.__opened.is_set():
                     return
-                if packet.ack:
-                    if packet.token != self.__tuning.token:
-                        await self.__stop()
-                        self.telemetry.token_errors += 1
-                        return
 
+                if packet.ack:
                     self.__writer.write(packet.data)
                     await self.__writer.drain()
                     self.__opened.set()
-                    self.telemetry.connections += 1
+                    self.telemetry.opened += 1
             case Phase.DATA:
-                if not self.__opened.is_set():
-                    await self.__stop()
+                if not self.__opened.is_set() or self.__write_closed.is_set():
                     return
 
                 if packet.ack:
@@ -137,7 +140,7 @@ class Relay(asyncio.DatagramProtocol):
                         await self.__writer.drain()
 
                     if len(self.__recv_buf) >= self.__tuning.capacity:
-                        await self.__stop()
+                        await self.__terminate()
                         self.telemetry.recv_buf_overloads += 1
                         return
 
@@ -148,23 +151,23 @@ class Relay(asyncio.DatagramProtocol):
                     )
                     await self.__sendto(data=await data_ack_packet.binary(fernet=self.__tuning.fernet))
             case Phase.CLOSE:
-                await self.__stop()
-                if not packet.ack:
-                    disconnect_ack_packet = Packet(
+                if packet.ack:
+                    self.__read_closed.set()
+                else:
+                    close_ack_packet = Packet(
                         phase=Phase.CLOSE,
                         ack=True,
                     )
-                    await self.__sendto(data=await disconnect_ack_packet.binary(fernet=self.__tuning.fernet))
-                self.__disconnected.set()
+                    await self.__sendto(data=await close_ack_packet.binary(fernet=self.__tuning.fernet))
+                    self.__write_closed.set()
             case _:
-                await self.__stop()
                 self.telemetry.type_errors += 1
 
     async def process(self, *, packet: Packet) -> None:
         try:
             await self.__process(packet=packet)
         except Exception as e:
-            await self.__stop()
+            await self.__terminate()
             logger.error(e)
             self.telemetry.processing_errors += 1
 
@@ -179,14 +182,19 @@ class Relay(asyncio.DatagramProtocol):
                 if delta >= self.__tuning.serving or self.__sent_buf[seq].retries >= self.__tuning.retries:
                     self.__sent_buf.pop(seq, None)
 
-        disconnect_packet = Packet(
+        close_packet = Packet(
             phase=Phase.CLOSE,
             ack=False,
         )
         await self.__sendto_retry(
-            data=await disconnect_packet.binary(fernet=self.__tuning.fernet),
-            event=self.__disconnected,
+            data=await close_packet.binary(fernet=self.__tuning.fernet),
+            event=self.__read_closed,
         )
+
+        try:
+            await asyncio.wait_for(self.__write_closed.wait(), self.__tuning.serving)
+        except asyncio.TimeoutError:
+            pass
 
     async def _finish(self) -> None:
         try:
@@ -197,14 +205,13 @@ class Relay(asyncio.DatagramProtocol):
             logger.error(e)
             self.telemetry.finishing_errors += 1
         finally:
-            await self.__stop()
-            await self.__close()
+            await self.__terminate()
 
     async def __stream(self) -> None:
         loop = asyncio.get_event_loop()
         await loop.create_datagram_endpoint(lambda: self, remote_addr=(self.__proxy_host, self.__proxy_port))
 
-        connect_packet = Packet(
+        open_packet = Packet(
             phase=Phase.OPEN,
             ack=False,
             token=self.__tuning.token,
@@ -212,7 +219,7 @@ class Relay(asyncio.DatagramProtocol):
             port=self.__remote_port,
         )
         if not await self.__sendto_retry(
-                data=await connect_packet.binary(fernet=self.__tuning.fernet),
+                data=await open_packet.binary(fernet=self.__tuning.fernet),
                 event=self.__opened,
         ):
             return
@@ -240,7 +247,7 @@ class Relay(asyncio.DatagramProtocol):
             self.__sent_seq += 1
 
             if len(self.__sent_buf) >= self.__tuning.capacity:
-                await self.__stop()
+                await self.__terminate()
                 self.telemetry.sent_buf_overloads += 1
                 break
 
@@ -253,14 +260,13 @@ class Relay(asyncio.DatagramProtocol):
             logger.error(e)
             self.telemetry.streaming_errors += 1
 
-    async def __stop(self) -> None:
+    async def __terminate(self) -> None:
         self.__opened.clear()
+        self.__read_closed.set()
+        self.__write_closed.set()
         if isinstance(self.__writer, asyncio.StreamWriter) and not self.__writer.is_closing():
             self.__writer.close()
             await self.__writer.wait_closed()
-
-    async def __close(self) -> None:
-        self.__disconnected.set()
         if not self.transport.is_closing():
             self.transport.close()
-        self.telemetry.disconnections += 1
+        self.telemetry.closed += 1
