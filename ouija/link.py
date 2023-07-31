@@ -76,7 +76,6 @@ class Link:
     async def __process(self, *, packet: Packet) -> None:
         match packet.phase:
             case Phase.OPEN:
-                print(packet.__dict__)
                 if packet.token != self.__tuning.token:
                     await self.__terminate()
                     self.telemetry.token_errors += 1
@@ -116,8 +115,8 @@ class Link:
                             self.__recv_buf.pop(seq)
                         if seq == self.__recv_seq:
                             self.__writer.write(self.__recv_buf.pop(seq).data)
+                            await self.__writer.drain()
                             self.__recv_seq += 1
-                        await self.__writer.drain()
 
                     if len(self.__recv_buf) >= self.__tuning.capacity:
                         await self.__terminate()
@@ -189,29 +188,28 @@ class Link:
 
     async def __stream(self) -> None:
         while self.__opened.is_set():
-            try:
-                data = await asyncio.wait_for(self.__reader.read(self.__tuning.payload), self.__tuning.timeout)
-            except asyncio.TimeoutError:
-                continue
+            data = await self.__reader.read(self.__tuning.buffer)
 
             if data == b'':
                 break
 
-            data_packet = Packet(
-                phase=Phase.DATA,
-                ack=False,
-                seq=self.__sent_seq,
-                data=data,
-            )
-            binary = await data_packet.binary(fernet=self.__tuning.fernet)
-            self.__sent_buf[self.__sent_seq] = Sent(data=binary)
-            await self.__sendto(data=binary)
-            self.__sent_seq += 1
+            for i in range(len(data) // self.__tuning.payload + int(bool(len(data) % self.__tuning.payload))):
+                chunk = data[i * self.__tuning.payload:(i + 1) * self.__tuning.payload]
+                data_packet = Packet(
+                    phase=Phase.DATA,
+                    ack=False,
+                    seq=self.__sent_seq,
+                    data=chunk,
+                )
+                binary = await data_packet.binary(fernet=self.__tuning.fernet)
+                self.__sent_buf[self.__sent_seq] = Sent(data=binary)
+                await self.__sendto(data=binary)
+                self.__sent_seq += 1
 
-            if len(self.__sent_buf) >= self.__tuning.capacity:
-                await self.__terminate()
-                self.telemetry.sent_buf_overloads += 1
-                break
+                if len(self.__sent_buf) >= self.__tuning.capacity:
+                    await self.__terminate()
+                    self.telemetry.sent_buf_overloads += 1
+                    break
 
     async def _stream(self) -> None:
         try:
@@ -219,7 +217,7 @@ class Link:
         except asyncio.TimeoutError:
             self.telemetry.timeout_errors += 1
         except Exception as e:
-            logger.error(e)
+            logger.exception(e)
             self.telemetry.streaming_errors += 1
 
     async def __terminate(self) -> None:

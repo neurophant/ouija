@@ -8,6 +8,7 @@ async def main() -> None:
     tuning = Tuning(
         fernet=settings.fernet,
         token=settings.TOKEN,
+        buffer=settings.BUFFER,
         serving=settings.SERVING,
         timeout=settings.TIMEOUT,
         payload=settings.PAYLOAD,
@@ -22,7 +23,7 @@ async def main() -> None:
     )
     loop = asyncio.get_event_loop()
     loop.create_task(interface.cleanup())
-    #loop.create_task(interface.monitor())
+#    loop.create_task(interface.monitor())
     server = await asyncio.start_server(interface.serve, settings.RELAY_HOST, settings.RELAY_PORT)
     async with server:
         await server.serve_forever()
