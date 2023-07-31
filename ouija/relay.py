@@ -80,6 +80,8 @@ class Relay(asyncio.DatagramProtocol):
         self.transport.sendto(data)
         self.telemetry.packets_sent += 1
         self.telemetry.bytes_sent += len(data)
+        if len(data) > self.telemetry.max_packet_size:
+            self.telemetry.max_packet_size = len(data)
 
     async def __sendto_retry(self, *, data: bytes, event: asyncio.Event) -> bool:
         for _ in range(self.__tuning.retries):
@@ -162,6 +164,8 @@ class Relay(asyncio.DatagramProtocol):
     async def process(self, *, packet: Packet) -> None:
         try:
             await self.__process(packet=packet)
+        except ConnectionError:
+            self.telemetry.connection_errors += 1
         except Exception as e:
             await self.__terminate()
             logger.error(e)
@@ -171,12 +175,15 @@ class Relay(asyncio.DatagramProtocol):
         while self.__opened.is_set() or self.__sent_buf:
             await asyncio.sleep(self.__tuning.timeout)
             for seq in sorted(self.__sent_buf.keys()):
-                delta = int(time.time()) - self.__sent_buf[seq].timestamp
+                stamp = int(time.time())
+                delta = stamp - self.__sent_buf[seq].timestamp
+                if delta >= self.__tuning.serving or self.__sent_buf[seq].retries >= self.__tuning.retries:
+                    self.__sent_buf.pop(seq, None)
+                    continue
                 if delta >= self.__tuning.timeout:
                     await self.__sendto(data=self.__sent_buf[seq].data)
                     self.__sent_buf[seq].retries += 1
-                if delta >= self.__tuning.serving or self.__sent_buf[seq].retries >= self.__tuning.retries:
-                    self.__sent_buf.pop(seq, None)
+                    self.__sent_buf[seq].timestamp = stamp
 
         close_packet = Packet(
             phase=Phase.CLOSE,

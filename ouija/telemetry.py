@@ -19,6 +19,7 @@ class Telemetry:
     finishing_errors: int = 0
     sent_buf_overloads: int = 0
     recv_buf_overloads: int = 0
+    max_packet_size: int = 0
 
     def __str__(self):
         return \
@@ -30,4 +31,5 @@ class Telemetry:
             f'\tdecoding/processing/token/type/timeout/connection/streaming/finishing errors: ' \
             f'{self.decoding_errors}/{self.processing_errors}/{self.token_errors}/{self.type_errors}/' \
             f'{self.timeout_errors}/{self.connection_errors}/{self.streaming_errors}/{self.finishing_errors}\n' \
-            f'\tsent/received buffer overloads: {self.sent_buf_overloads}/{self.recv_buf_overloads}\n'
+            f'\tsent/received buffer overloads: {self.sent_buf_overloads}/{self.recv_buf_overloads}\n' \
+            f'\tmax packet size: {self.max_packet_size}'
