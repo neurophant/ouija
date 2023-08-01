@@ -19,6 +19,7 @@ TOKENS = {
     'port': 'pt',
     'seq': 'sq',
     'data': 'da',
+    'drain': 'dn',
 }
 
 
@@ -30,6 +31,7 @@ class Packet:
     port: Optional[int]
     seq: Optional[int]
     data: Optional[bytes]
+    drain: Optional[bool]
 
     def __init__(
             self, 
@@ -41,6 +43,7 @@ class Packet:
             port: Optional[int] = None,
             seq: Optional[int] = None,
             data: Optional[bytes] = None,
+            drain: Optional[bool] = None,
     ) -> None:
         self.phase = phase
         self.ack = ack
@@ -49,6 +52,7 @@ class Packet:
         self.port = port
         self.seq = seq
         self.data = data
+        self.drain = drain
 
     @staticmethod
     async def packet(*, data: bytes, fernet: Fernet) -> 'Packet':
@@ -61,6 +65,7 @@ class Packet:
             port=json.get(TOKENS['port'], None),
             seq=json.get(TOKENS['seq'], None),
             data=json.get(TOKENS['data'], None),
+            drain=json.get(TOKENS['drain'], None),
         )
 
     async def binary(self, *, fernet: Fernet) -> bytes:

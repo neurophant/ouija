@@ -14,6 +14,8 @@ class Sent:
 
 class Received:
     data: bytes
+    drain: bool
 
-    def __init__(self, *, data: bytes):
+    def __init__(self, *, data: bytes, drain: bool):
         self.data = data
+        self.drain = drain

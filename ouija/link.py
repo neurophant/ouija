@@ -28,7 +28,6 @@ class Link:
     __tuning: Tuning
     __reader: Optional[asyncio.StreamReader]
     __writer: Optional[asyncio.StreamWriter]
-    __wrote: int
     __remote_host: Optional[str]
     __remote_port: Optional[int]
     __opened: asyncio.Event
@@ -84,27 +83,21 @@ class Link:
     async def __read(self) -> bytes:
         return await self.__reader.read(self.__tuning.buffer)
 
-    async def __write(self, *, data: bytes) -> None:
+    async def __write(self, *, data: bytes, drain: bool) -> None:
         self.__writer.write(data)
-        self.__wrote += 1
-        await self.__drain()
-
-    async def __drain(self, *, force: bool = False) -> None:
-        if self.__wrote >= self.__tuning.count or force:
+        if drain:
             await self.__writer.drain()
-            self.__wrote = 0
 
-    async def __recv(self, *, seq: int, data: bytes) -> None:
+    async def __recv(self, *, seq: int, data: bytes, drain: bool) -> None:
         if seq >= self.__recv_seq:
-            self.__recv_buf[seq] = Received(data=data)
+            self.__recv_buf[seq] = Received(data=data, drain=drain)
 
         for seq in sorted(self.__recv_buf.keys()):
             if seq < self.__recv_seq:
                 self.__recv_buf.pop(seq)
             if seq == self.__recv_seq:
-                await self.__write(data=self.__recv_buf.pop(seq).data)
-                if seq % 2 == 1:
-                    await self.__drain(force=True)
+                recv = self.__recv_buf.pop(seq)
+                await self.__write(data=recv.data, drain=recv.drain)
                 self.__recv_seq += 1
 
         await self.__send_ack_data(seq=seq)
@@ -113,12 +106,13 @@ class Link:
             await self.__terminate()
             self.telemetry.recv_buf_overloads += 1
 
-    async def __enqueue_send(self, *, data: bytes) -> None:
+    async def __enqueue_send(self, *, data: bytes, drain: bool) -> None:
         data_packet = Packet(
             phase=Phase.DATA,
             ack=False,
             seq=self.__sent_seq,
             data=data,
+            drain=drain,
         )
         data_ = await data_packet.binary(fernet=self.__tuning.fernet)
         self.__sent_buf[self.__sent_seq] = Sent(data=data_)
@@ -154,6 +148,7 @@ class Link:
             ack=True,
             token=self.__tuning.token,
             data=b'HTTP/1.1 200 Connection Established\r\n\r\n',
+            drain=True,
         )
         await self.__sendto(data=await open_ack_packet.binary(fernet=self.__tuning.fernet))
 
@@ -216,12 +211,11 @@ class Link:
                 if packet.ack:
                     await self.__dequeue_send(seq=packet.seq)
                 else:
-                    await self.__recv(seq=packet.seq, data=packet.data)
+                    await self.__recv(seq=packet.seq, data=packet.data, drain=packet.drain)
             case Phase.CLOSE:
                 if packet.ack:
                     self.__read_closed.set()
                 else:
-                    await self.__drain(force=True)
                     await self.__send_ack_close()
                     self.__write_closed.set()
             case _:
@@ -284,7 +278,10 @@ class Link:
                 break
 
             for idx in range(0, len(data), self.__tuning.payload):
-                await self.__enqueue_send(data=data[idx:idx + self.__tuning.payload])
+                await self.__enqueue_send(
+                    data=data[idx:idx + self.__tuning.payload],
+                    drain=True if len(data) - idx <= self.__tuning.payload else False,
+                )
 
     async def _stream(self) -> None:
         try:
@@ -304,7 +301,6 @@ class Link:
         self.__write_closed.set()
 
         if isinstance(self.__writer, asyncio.StreamWriter) and not self.__writer.is_closing():
-            await self.__drain(force=True)
             self.__writer.close()
             await self.__writer.wait_closed()
 
