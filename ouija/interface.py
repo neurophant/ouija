@@ -10,9 +10,12 @@ from .telemetry import Telemetry
 from .utils import RawParser
 
 
-logging.basicConfig()
+logging.basicConfig(
+    format='%(asctime)s,%(msecs)03d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s',
+    datefmt='%Y-%m-%d:%H:%M:%S',
+    level=logging.DEBUG,
+)
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.ERROR)
 
 
 class Interface:
@@ -52,23 +55,20 @@ class Interface:
         await relay.stream()
 
     async def __session(self, *, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
-        with closing(writer):
-            data = await reader.readuntil(b'\r\n\r\n')
-            addr = writer.get_extra_info('peername')
+        data = await reader.readuntil(b'\r\n\r\n')
+        request = RawParser(data=data)
 
-            request = RawParser(data=data)
-
-            if request.error:
-                logger.error('Parse error')
-            elif request.method == 'CONNECT':  # https
-                await self.__https_handler(
-                    reader=reader,
-                    writer=writer,
-                    remote_host=request.host,
-                    remote_port=request.port,
-                )
-            else:
-                logger.error(f'{request.method} method is not supported')
+        if request.error:
+            logger.error('Parse error')
+        elif request.method == 'CONNECT':
+            await self.__https_handler(
+                reader=reader,
+                writer=writer,
+                remote_host=request.host,
+                remote_port=request.port,
+            )
+        else:
+            logger.error(f'{request.method} method is not supported')
 
     async def _session(self, *, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
         try:

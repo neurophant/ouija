@@ -9,9 +9,12 @@ from .telemetry import Telemetry
 from .tuning import Tuning
 
 
-logging.basicConfig()
+logging.basicConfig(
+    format='%(asctime)s,%(msecs)03d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s',
+    datefmt='%Y-%m-%d:%H:%M:%S',
+    level=logging.DEBUG,
+)
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.ERROR)
 
 
 class Relay(asyncio.DatagramProtocol):
@@ -164,7 +167,8 @@ class Relay(asyncio.DatagramProtocol):
     async def process(self, *, packet: Packet) -> None:
         try:
             await self.__process(packet=packet)
-        except ConnectionError:
+        except ConnectionError as e:
+            logger.error(e)
             self.telemetry.connection_errors += 1
         except Exception as e:
             await self.__terminate()
@@ -203,7 +207,8 @@ class Relay(asyncio.DatagramProtocol):
     async def _finish(self) -> None:
         try:
             await asyncio.wait_for(self.__finish(), self.__tuning.serving)
-        except asyncio.TimeoutError:
+        except asyncio.TimeoutError as e:
+            logger.error(e)
             self.telemetry.timeout_errors += 1
         except Exception as e:
             logger.error(e)
@@ -260,7 +265,8 @@ class Relay(asyncio.DatagramProtocol):
             await asyncio.wait_for(self.__stream(), self.__tuning.serving)
         except asyncio.TimeoutError:
             self.telemetry.timeout_errors += 1
-        except ConnectionError:
+        except ConnectionError as e:
+            logger.error(e)
             self.telemetry.connection_errors += 1
         except Exception as e:
             logger.error(e)

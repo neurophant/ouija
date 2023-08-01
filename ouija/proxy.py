@@ -9,9 +9,12 @@ from .tuning import Tuning
 from .link import Link
 
 
-logging.basicConfig()
+logging.basicConfig(
+    format='%(asctime)s,%(msecs)03d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s',
+    datefmt='%Y-%m-%d:%H:%M:%S',
+    level=logging.DEBUG,
+)
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.ERROR)
 
 
 class Proxy(asyncio.DatagramProtocol):

@@ -22,7 +22,7 @@ def main() -> None:
     )
     loop = asyncio.get_event_loop()
     loop.create_task(proxy.cleanup())
-    loop.create_task(proxy.monitor())
+    #loop.create_task(proxy.monitor())
     loop.run_until_complete(proxy.serve())
     loop.run_forever()
 

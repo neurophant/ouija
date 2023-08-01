@@ -13,6 +13,6 @@ fernet = Fernet('bdDmN4VexpDvTrs6gw8xTzaFvIBobFg1Cx2McFB1RmI=')
 TOKEN = 'terces'
 SERVING = 30
 TIMEOUT = 3
-PAYLOAD = 1024
+PAYLOAD = 512
 RETRIES = 5
 CAPACITY = 1000

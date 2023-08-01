@@ -13,9 +13,12 @@ if TYPE_CHECKING:
     from proxy import Proxy
 
 
-logging.basicConfig()
+logging.basicConfig(
+    format='%(asctime)s,%(msecs)03d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s',
+    datefmt='%Y-%m-%d:%H:%M:%S',
+    level=logging.DEBUG,
+)
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.ERROR)
 
 
 class Link:
@@ -148,7 +151,8 @@ class Link:
     async def process(self, *, packet: Packet) -> None:
         try:
             await self.__process(packet=packet)
-        except ConnectionError:
+        except ConnectionError as e:
+            logger.error(e)
             self.telemetry.connection_errors += 1
         except Exception as e:
             await self.__terminate()
@@ -225,7 +229,8 @@ class Link:
             await asyncio.wait_for(self.__stream(), self.__tuning.serving)
         except asyncio.TimeoutError:
             self.telemetry.timeout_errors += 1
-        except ConnectionError:
+        except ConnectionError as e:
+            logger.error(e)
             self.telemetry.connection_errors += 1
         except Exception as e:
             logger.error(e)
