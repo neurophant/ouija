@@ -64,11 +64,12 @@ class Link:
             self.telemetry.max_packet_size = len(data)
 
     async def __sendto_retry(self, *, data: bytes, event: asyncio.Event) -> bool:
-        for _ in range(0, self.__tuning.retries):
+        for _ in range(self.__tuning.retries):
             await self.__sendto(data=data)
             try:
                 await asyncio.wait_for(event.wait(), self.__tuning.timeout)
             except asyncio.TimeoutError:
+                self.telemetry.resent += 1
                 continue
             else:
                 return True
@@ -120,17 +121,17 @@ class Link:
                             await self.__writer.drain()
                             self.__recv_seq += 1
 
-                    if len(self.__recv_buf) >= self.__tuning.capacity:
-                        await self.__terminate()
-                        self.telemetry.recv_buf_overloads += 1
-                        return
-
                     data_ack_packet = Packet(
                         phase=Phase.DATA,
                         ack=True,
                         seq=packet.seq,
                     )
                     await self.__sendto(data=await data_ack_packet.binary(fernet=self.__tuning.fernet))
+
+                    if len(self.__recv_buf) >= self.__tuning.capacity:
+                        await self.__terminate()
+                        self.telemetry.recv_buf_overloads += 1
+                        return
             case Phase.CLOSE:
                 if packet.ack:
                     self.__read_closed.set()
@@ -158,15 +159,15 @@ class Link:
         while self.__opened.is_set() or self.__sent_buf:
             await asyncio.sleep(self.__tuning.timeout)
             for seq in sorted(self.__sent_buf.keys()):
-                stamp = int(time.time())
-                delta = stamp - self.__sent_buf[seq].timestamp
+                delta = int(time.time()) - self.__sent_buf[seq].timestamp
                 if delta >= self.__tuning.serving or self.__sent_buf[seq].retries >= self.__tuning.retries:
-                    self.__sent_buf.pop(seq, None)
-                    continue
+                    await self.__terminate()
+                    self.telemetry.unfinished += 1
+                    break
                 if delta >= self.__tuning.timeout:
                     await self.__sendto(data=self.__sent_buf[seq].data)
                     self.__sent_buf[seq].retries += 1
-                    self.__sent_buf[seq].timestamp = stamp
+                    self.telemetry.resent += 1
 
         close_packet = Packet(
             phase=Phase.CLOSE,
@@ -195,9 +196,12 @@ class Link:
 
     async def __stream(self) -> None:
         while self.__opened.is_set():
-            data = await self.__reader.read(self.__tuning.payload)
+            try:
+                data = await asyncio.wait_for(self.__reader.read(self.__tuning.payload), self.__tuning.timeout)
+            except TimeoutError:
+                continue
 
-            if data == b'':
+            if not data:
                 break
 
             data_packet = Packet(
