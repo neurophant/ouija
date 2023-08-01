@@ -13,6 +13,7 @@ PROXY_PORT = 50000
 
 fernet = Fernet('bdDmN4VexpDvTrs6gw8xTzaFvIBobFg1Cx2McFB1RmI=')
 TOKEN = 'terces'
+BUFFER = 1024
 SERVING = 60
 TIMEOUT = 5
 PAYLOAD = 256

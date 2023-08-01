@@ -8,6 +8,7 @@ def main() -> None:
     tuning = Tuning(
         fernet=settings.fernet,
         token=settings.TOKEN,
+        buffer=settings.BUFFER,
         serving=settings.SERVING,
         timeout=settings.TIMEOUT,
         payload=settings.PAYLOAD,

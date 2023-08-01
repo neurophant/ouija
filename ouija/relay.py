@@ -23,6 +23,7 @@ class Relay(asyncio.DatagramProtocol):
     __tuning: Tuning
     __reader: asyncio.StreamReader
     __writer: asyncio.StreamWriter
+    __wrote: int
     __proxy_host: str
     __proxy_port: int
     __remote_host: str
@@ -52,6 +53,7 @@ class Relay(asyncio.DatagramProtocol):
         self.__tuning = tuning
         self.__reader = reader
         self.__writer = writer
+        self.__wrote = 0
         self.__proxy_host = proxy_host
         self.__proxy_port = proxy_port
         self.__remote_host = remote_host
@@ -110,17 +112,122 @@ class Relay(asyncio.DatagramProtocol):
             return
         await self.process(packet=packet)
 
+    async def __read(self) -> bytes:
+        return await self.__reader.read(self.__tuning.buffer)
+
+    async def __write(self, *, data: bytes) -> None:
+        self.__writer.write(data)
+        self.__wrote += len(data)
+        await self.__drain()
+
+    async def __drain(self, *, force: bool = False) -> None:
+        if self.__wrote >= self.__tuning.buffer or force:
+            await self.__writer.drain()
+            self.__wrote = 0
+
+    async def __recv(self, *, seq: int, data: bytes) -> None:
+        if seq >= self.__recv_seq:
+            self.__recv_buf[seq] = Received(data=data)
+
+        for seq in sorted(self.__recv_buf.keys()):
+            if seq < self.__recv_seq:
+                self.__recv_buf.pop(seq)
+            if seq == self.__recv_seq:
+                await self.__write(data=self.__recv_buf.pop(seq).data)
+                self.__recv_seq += 1
+
+        await self.__send_ack_data(seq=seq)
+
+        if len(self.__recv_buf) >= self.__tuning.capacity:
+            await self.__terminate()
+            self.telemetry.recv_buf_overloads += 1
+
+    async def __enqueue_send(self, *, data: bytes) -> None:
+        data_packet = Packet(
+            phase=Phase.DATA,
+            ack=False,
+            seq=self.__sent_seq,
+            data=data,
+        )
+        data_ = await data_packet.binary(fernet=self.__tuning.fernet)
+        self.__sent_buf[self.__sent_seq] = Sent(data=data_)
+        await self.__sendto(data=data_)
+        self.__sent_seq += 1
+
+        if len(self.__sent_buf) >= self.__tuning.capacity:
+            await self.__terminate()
+            self.telemetry.sent_buf_overloads += 1
+
+    async def __dequeue_send(self, *, seq: int) -> None:
+        self.__sent_buf.pop(seq, None)
+
+    async def __send_open(self) -> bool:
+        open_packet = Packet(
+            phase=Phase.OPEN,
+            ack=False,
+            token=self.__tuning.token,
+            host=self.__remote_host,
+            port=self.__remote_port,
+        )
+        if not await self.__sendto_retry(
+                data=await open_packet.binary(fernet=self.__tuning.fernet),
+                event=self.__opened,
+        ):
+            return False
+
+        return True
+
+    async def __send_ack_open(self) -> None:
+        open_ack_packet = Packet(
+            phase=Phase.OPEN,
+            ack=True,
+            token=self.__tuning.token,
+            data=b'HTTP/1.1 200 Connection Established\r\n\r\n',
+        )
+        await self.__sendto(data=await open_ack_packet.binary(fernet=self.__tuning.fernet))
+
+    async def __check_token(self, *, token: str) -> bool:
+        if token == self.__tuning.token:
+            return True
+
+        await self.__terminate()
+        self.telemetry.token_errors += 1
+        return False
+
+    async def __send_ack_data(self, *, seq: int) -> None:
+        data_ack_packet = Packet(
+            phase=Phase.DATA,
+            ack=True,
+            seq=seq,
+        )
+        await self.__sendto(data=await data_ack_packet.binary(fernet=self.__tuning.fernet))
+
+    async def __send_close(self) -> None:
+        close_packet = Packet(
+            phase=Phase.CLOSE,
+            ack=False,
+        )
+        await self.__sendto_retry(
+            data=await close_packet.binary(fernet=self.__tuning.fernet),
+            event=self.__read_closed,
+        )
+
+    async def __send_ack_close(self) -> None:
+        close_ack_packet = Packet(
+            phase=Phase.CLOSE,
+            ack=True,
+        )
+        await self.__sendto(data=await close_ack_packet.binary(fernet=self.__tuning.fernet))
+
     async def __process(self, *, packet: Packet) -> None:
         match packet.phase:
             case Phase.OPEN:
-                if packet.token != self.__tuning.token:
-                    await self.__terminate()
-                    self.telemetry.token_errors += 1
+                if not await self.__check_token(token=packet.token):
                     return
 
                 if packet.ack and not self.__opened.is_set():
-                    self.__writer.write(packet.data)
-                    await self.__writer.drain()
+                    await self.__write(data=packet.data)
+                    await self.__drain(force=True)
                     self.__opened.set()
                     self.telemetry.opened += 1
             case Phase.DATA:
@@ -128,40 +235,15 @@ class Relay(asyncio.DatagramProtocol):
                     return
 
                 if packet.ack:
-                    self.__sent_buf.pop(packet.seq, None)
+                    await self.__dequeue_send(seq=packet.seq)
                 else:
-                    if packet.seq >= self.__recv_seq:
-                        self.__recv_buf[packet.seq] = Received(data=packet.data)
-
-                    for seq in sorted(self.__recv_buf.keys()):
-                        if seq < self.__recv_seq:
-                            self.__recv_buf.pop(seq)
-                        if seq == self.__recv_seq:
-                            self.__writer.write(self.__recv_buf.pop(seq).data)
-                            if seq % 2 == 1:
-                                await self.__writer.drain()
-                            self.__recv_seq += 1
-
-                    data_ack_packet = Packet(
-                        phase=Phase.DATA,
-                        ack=True,
-                        seq=packet.seq,
-                    )
-                    await self.__sendto(data=await data_ack_packet.binary(fernet=self.__tuning.fernet))
-
-                    if len(self.__recv_buf) >= self.__tuning.capacity:
-                        await self.__terminate()
-                        self.telemetry.recv_buf_overloads += 1
+                    await self.__recv(seq=packet.seq, data=packet.data)
             case Phase.CLOSE:
                 if packet.ack:
                     self.__read_closed.set()
                 else:
-                    await self.__writer.drain()
-                    close_ack_packet = Packet(
-                        phase=Phase.CLOSE,
-                        ack=True,
-                    )
-                    await self.__sendto(data=await close_ack_packet.binary(fernet=self.__tuning.fernet))
+                    await self.__drain(force=True)
+                    await self.__send_ack_close()
                     self.__write_closed.set()
             case _:
                 self.telemetry.type_errors += 1
@@ -180,25 +262,21 @@ class Relay(asyncio.DatagramProtocol):
     async def __finish(self) -> None:
         while self.__opened.is_set() or self.__sent_buf:
             await asyncio.sleep(self.__tuning.timeout)
+
             for seq in sorted(self.__sent_buf.keys()):
                 delta = int(time.time()) - self.__sent_buf[seq].timestamp
+
                 if delta >= self.__tuning.serving or self.__sent_buf[seq].retries >= self.__tuning.retries:
                     await self.__terminate()
                     self.telemetry.unfinished += 1
                     break
+
                 if delta >= self.__tuning.timeout:
                     await self.__sendto(data=self.__sent_buf[seq].data)
                     self.__sent_buf[seq].retries += 1
                     self.telemetry.resent += 1
 
-        close_packet = Packet(
-            phase=Phase.CLOSE,
-            ack=False,
-        )
-        await self.__sendto_retry(
-            data=await close_packet.binary(fernet=self.__tuning.fernet),
-            event=self.__read_closed,
-        )
+        await self.__send_close()
 
         try:
             await asyncio.wait_for(self.__write_closed.wait(), self.__tuning.serving)
@@ -221,56 +299,22 @@ class Relay(asyncio.DatagramProtocol):
         loop = asyncio.get_event_loop()
         await loop.create_datagram_endpoint(lambda: self, remote_addr=(self.__proxy_host, self.__proxy_port))
 
-        open_packet = Packet(
-            phase=Phase.OPEN,
-            ack=False,
-            token=self.__tuning.token,
-            host=self.__remote_host,
-            port=self.__remote_port,
-        )
-        if not await self.__sendto_retry(
-                data=await open_packet.binary(fernet=self.__tuning.fernet),
-                event=self.__opened,
-        ):
+        if not await self.__send_open():
             return
 
         self.__finish_task = loop.create_task(self._finish())
 
         while self.__opened.is_set():
             try:
-                data = await asyncio.wait_for(self.__reader.read(1024), self.__tuning.timeout)
+                data = await asyncio.wait_for(self.__read(), self.__tuning.timeout)
             except TimeoutError:
                 continue
 
             if not data:
                 break
 
-            data_packet = Packet(
-                phase=Phase.DATA,
-                ack=False,
-                seq=self.__sent_seq,
-                data=data[:512],
-            )
-            binary = await data_packet.binary(fernet=self.__tuning.fernet)
-            self.__sent_buf[self.__sent_seq] = Sent(data=binary)
-            await self.__sendto(data=binary)
-            self.__sent_seq += 1
-            if len(data) > 512:
-                data_packet = Packet(
-                    phase=Phase.DATA,
-                    ack=False,
-                    seq=self.__sent_seq,
-                    data=data[512:],
-                )
-                binary = await data_packet.binary(fernet=self.__tuning.fernet)
-                self.__sent_buf[self.__sent_seq] = Sent(data=binary)
-                await self.__sendto(data=binary)
-                self.__sent_seq += 1
-
-            if len(self.__sent_buf) >= self.__tuning.capacity:
-                await self.__terminate()
-                self.telemetry.sent_buf_overloads += 1
-                break
+            for idx in range(0, len(data), self.__tuning.payload):
+                await self.__enqueue_send(data=data[idx:idx + self.__tuning.payload])
 
     async def stream(self) -> None:
         try:
@@ -288,9 +332,13 @@ class Relay(asyncio.DatagramProtocol):
         self.__opened.clear()
         self.__read_closed.set()
         self.__write_closed.set()
+
         if isinstance(self.__writer, asyncio.StreamWriter) and not self.__writer.is_closing():
+            await self.__drain(force=True)
             self.__writer.close()
             await self.__writer.wait_closed()
+
         if not self.transport.is_closing():
             self.transport.close()
+
         self.telemetry.closed += 1
