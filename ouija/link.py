@@ -121,7 +121,8 @@ class Link:
                             self.__recv_buf.pop(seq)
                         if seq == self.__recv_seq:
                             self.__writer.write(self.__recv_buf.pop(seq).data)
-                            await self.__writer.drain()
+                            if seq % 2 == 1:
+                                await self.__writer.drain()
                             self.__recv_seq += 1
 
                     data_ack_packet = Packet(
@@ -139,6 +140,7 @@ class Link:
                 if packet.ack:
                     self.__read_closed.set()
                 else:
+                    await self.__writer.drain()
                     close_ack_packet = Packet(
                         phase=Phase.CLOSE,
                         ack=True,
@@ -201,7 +203,7 @@ class Link:
     async def __stream(self) -> None:
         while self.__opened.is_set():
             try:
-                data = await asyncio.wait_for(self.__reader.read(self.__tuning.payload), self.__tuning.timeout)
+                data = await asyncio.wait_for(self.__reader.read(1024), self.__tuning.timeout)
             except TimeoutError:
                 continue
 
@@ -212,12 +214,23 @@ class Link:
                 phase=Phase.DATA,
                 ack=False,
                 seq=self.__sent_seq,
-                data=data,
+                data=data[:512],
             )
             binary = await data_packet.binary(fernet=self.__tuning.fernet)
             self.__sent_buf[self.__sent_seq] = Sent(data=binary)
             await self.__sendto(data=binary)
             self.__sent_seq += 1
+            if len(data) > 512:
+                data_packet = Packet(
+                    phase=Phase.DATA,
+                    ack=False,
+                    seq=self.__sent_seq,
+                    data=data[512:],
+                )
+                binary = await data_packet.binary(fernet=self.__tuning.fernet)
+                self.__sent_buf[self.__sent_seq] = Sent(data=binary)
+                await self.__sendto(data=binary)
+                self.__sent_seq += 1
 
             if len(self.__sent_buf) >= self.__tuning.capacity:
                 await self.__terminate()
