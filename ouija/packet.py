@@ -50,8 +50,8 @@ class Packet:
         self.seq = seq
         self.data = data
 
-    @classmethod
-    async def packet(cls, *, data: bytes, fernet: Fernet) -> 'Packet':
+    @staticmethod
+    async def packet(*, data: bytes, fernet: Fernet) -> 'Packet':
         json = pbjson.loads(fernet.decrypt(data))
         return Packet(
             phase=json.get(TOKENS['phase']),
