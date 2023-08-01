@@ -86,11 +86,11 @@ class Link:
 
     async def __write(self, *, data: bytes) -> None:
         self.__writer.write(data)
-        self.__wrote += len(data)
+        self.__wrote += 1
         await self.__drain()
 
     async def __drain(self, *, force: bool = False) -> None:
-        if self.__wrote >= self.__tuning.buffer or force:
+        if self.__wrote >= self.__tuning.count or force:
             await self.__writer.drain()
             self.__wrote = 0
 
@@ -103,6 +103,8 @@ class Link:
                 self.__recv_buf.pop(seq)
             if seq == self.__recv_seq:
                 await self.__write(data=self.__recv_buf.pop(seq).data)
+                if seq % 2 == 1:
+                    await self.__drain(force=True)
                 self.__recv_seq += 1
 
         await self.__send_ack_data(seq=seq)
