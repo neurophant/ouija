@@ -4,3 +4,4 @@ from .utils import RawParser
 from .tuning import Tuning
 from .relay import Relay
 from .proxy import Proxy
+from .ouija import Ouija
