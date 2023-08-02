@@ -31,7 +31,3 @@ class Tuning:
         self.payload = payload
         self.retries = retries
         self.capacity = capacity
-
-    @property
-    def count(self) -> int:
-        return self.buffer // self.payload + int(bool(self.buffer % self.payload))

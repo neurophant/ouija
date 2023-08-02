@@ -4,7 +4,7 @@ import logging
 from .telemetry import Telemetry
 from .tuning import Tuning
 from .ouija import Ouija
-from .packet import Phase, Packet
+from .packet import Packet
 
 
 logging.basicConfig(
@@ -72,7 +72,7 @@ class Relay(Ouija, asyncio.DatagramProtocol):
 
     def connection_lost(self, exc) -> None:
         loop = asyncio.get_event_loop()
-        loop.create_task(self.terminate())
+        loop.create_task(self.close())
 
     async def sendto(self, *, data: bytes) -> None:
         self.transport.sendto(data)
@@ -81,57 +81,22 @@ class Relay(Ouija, asyncio.DatagramProtocol):
         if len(data) > self.telemetry.max_packet_size:
             self.telemetry.max_packet_size = len(data)
 
-    async def _process(self, *, packet: Packet) -> None:
-        match packet.phase:
-            case Phase.OPEN:
-                if not await self.check_token(token=packet.token):
-                    return
+    async def phase_open(self, *, packet: Packet) -> None:
+        if packet.ack and not self.opened.is_set():
+            await self.write(data=packet.data, drain=packet.drain)
+            self.opened.set()
+            self.telemetry.opened += 1
 
-                if packet.ack and not self.opened.is_set():
-                    await self.write(data=packet.data, drain=packet.drain)
-                    self.opened.set()
-                    self.telemetry.opened += 1
-            case Phase.DATA:
-                if not self.opened.is_set() or self.write_closed.is_set():
-                    return
-
-                if packet.ack:
-                    await self.dequeue_send(seq=packet.seq)
-                else:
-                    await self.recv(seq=packet.seq, data=packet.data, drain=packet.drain)
-            case Phase.CLOSE:
-                if packet.ack:
-                    self.read_closed.set()
-                else:
-                    await self.send_ack_close()
-                    self.write_closed.set()
-            case _:
-                self.telemetry.type_errors += 1
-
-    async def _stream(self) -> None:
+    async def handshake(self) -> bool:
         loop = asyncio.get_event_loop()
         await loop.create_datagram_endpoint(lambda: self, remote_addr=(self.proxy_host, self.proxy_port))
 
         if not await self.send_open():
-            return
+            return False
 
         loop.create_task(self.finish())
+        return True
 
-        while self.opened.is_set():
-            try:
-                data = await asyncio.wait_for(self.read(), self.tuning.timeout)
-            except TimeoutError:
-                continue
-
-            if not data:
-                break
-
-            for idx in range(0, len(data), self.tuning.payload):
-                await self.enqueue_send(
-                    data=data[idx:idx + self.tuning.payload],
-                    drain=True if len(data) - idx <= self.tuning.payload else False,
-                )
-
-    async def _terminate(self) -> None:
+    async def terminate(self) -> None:
         if not self.transport.is_closing():
             self.transport.close()

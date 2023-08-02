@@ -71,7 +71,7 @@ class Ouija:
         await self.send_ack_data(seq=seq)
 
         if len(self.recv_buf) >= self.tuning.capacity:
-            await self.terminate()
+            await self.close()
             self.telemetry.recv_buf_overloads += 1
 
     async def enqueue_send(self, *, data: bytes, drain: bool) -> None:
@@ -88,7 +88,7 @@ class Ouija:
         self.sent_seq += 1
 
         if len(self.sent_buf) >= self.tuning.capacity:
-            await self.terminate()
+            await self.close()
             self.telemetry.sent_buf_overloads += 1
 
     async def dequeue_send(self, *, seq: int) -> None:
@@ -124,7 +124,7 @@ class Ouija:
         if token == self.tuning.token:
             return True
 
-        await self.terminate()
+        await self.close()
         self.telemetry.token_errors += 1
         return False
 
@@ -153,8 +153,38 @@ class Ouija:
         )
         await self.sendto(data=await close_ack_packet.binary(fernet=self.tuning.fernet))
 
-    async def _process(self, *, packet: Packet) -> None:
+    async def phase_open(self, packet: Packet) -> None:
         raise NotImplementedError
+
+    async def phase_data(self, packet: Packet) -> None:
+        if packet.ack:
+            await self.dequeue_send(seq=packet.seq)
+        else:
+            await self.recv(seq=packet.seq, data=packet.data, drain=packet.drain)
+
+    async def phase_close(self, packet: Packet) -> None:
+        if packet.ack:
+            self.read_closed.set()
+        else:
+            await self.send_ack_close()
+            self.write_closed.set()
+
+    async def _process(self, *, packet: Packet) -> None:
+        match packet.phase:
+            case Phase.OPEN:
+                if not await self.check_token(token=packet.token):
+                    return
+
+                await self.phase_open(packet=packet)
+            case Phase.DATA:
+                if not self.opened.is_set() or self.write_closed.is_set():
+                    return
+
+                await self.phase_data(packet=packet)
+            case Phase.CLOSE:
+                await self.phase_close(packet=packet)
+            case _:
+                self.telemetry.type_errors += 1
 
     async def process(self, *, packet: Packet) -> None:
         try:
@@ -163,7 +193,7 @@ class Ouija:
             logger.error(e)
             self.telemetry.connection_errors += 1
         except Exception as e:
-            await self.terminate()
+            await self.close()
             logger.error(e)
             self.telemetry.processing_errors += 1
 
@@ -175,7 +205,7 @@ class Ouija:
                 delta = int(time.time()) - self.sent_buf[seq].timestamp
 
                 if delta >= self.tuning.serving or self.sent_buf[seq].retries >= self.tuning.retries:
-                    await self.terminate()
+                    await self.close()
                     self.telemetry.unfinished += 1
                     break
 
@@ -200,10 +230,29 @@ class Ouija:
             logger.error(e)
             self.telemetry.finishing_errors += 1
         finally:
-            await self.terminate()
+            await self.close()
+
+    async def handshake(self) -> bool:
+        raise NotImplementedError
 
     async def _stream(self) -> None:
-        raise NotImplementedError
+        if not await self.handshake():
+            return
+
+        while self.opened.is_set():
+            try:
+                data = await asyncio.wait_for(self.read(), self.tuning.timeout)
+            except TimeoutError:
+                continue
+
+            if not data:
+                break
+
+            for idx in range(0, len(data), self.tuning.payload):
+                await self.enqueue_send(
+                    data=data[idx:idx + self.tuning.payload],
+                    drain=True if len(data) - idx <= self.tuning.payload else False,
+                )
 
     async def stream(self) -> None:
         try:
@@ -217,10 +266,10 @@ class Ouija:
             logger.error(e)
             self.telemetry.streaming_errors += 1
 
-    async def _terminate(self) -> None:
+    async def terminate(self) -> None:
         raise NotImplementedError
 
-    async def terminate(self) -> None:
+    async def close(self) -> None:
         self.opened.clear()
         self.read_closed.set()
         self.write_closed.set()
@@ -231,4 +280,4 @@ class Ouija:
 
         self.telemetry.closed += 1
 
-        await self._terminate()
+        await self.terminate()

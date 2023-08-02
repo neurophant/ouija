@@ -2,7 +2,7 @@ import asyncio
 from typing import Tuple
 import logging
 
-from .packet import Packet, Phase
+from .packet import Packet
 from .telemetry import Telemetry
 from .tuning import Tuning
 from .ouija import Ouija
@@ -48,57 +48,23 @@ class Link(Ouija):
         if len(data) > self.telemetry.max_packet_size:
             self.telemetry.max_packet_size = len(data)
 
-    async def _process(self, *, packet: Packet) -> None:
-        match packet.phase:
-            case Phase.OPEN:
-                if not await self.check_token(token=packet.token):
-                    return
+    async def phase_open(self, *, packet: Packet) -> None:
+        if not self.opened.is_set():
+            self.remote_host = packet.host
+            self.remote_port = packet.port
 
-                if not self.opened.is_set():
-                    self.remote_host = packet.host
-                    self.remote_port = packet.port
+            self.reader, self.writer = await asyncio.open_connection(self.remote_host, self.remote_port)
+            self.opened.set()
+            self.proxy.links[self.addr] = self
+            loop = asyncio.get_event_loop()
+            loop.create_task(self.stream())
+            loop.create_task(self.finish())
+            self.telemetry.opened += 1
 
-                    self.reader, self.writer = await asyncio.open_connection(self.remote_host, self.remote_port)
-                    self.opened.set()
-                    self.proxy.links[self.addr] = self
-                    loop = asyncio.get_event_loop()
-                    loop.create_task(self.stream())
-                    loop.create_task(self.finish())
+        await self.send_ack_open()
 
-                await self.send_ack_open()
-                self.telemetry.opened += 1
-            case Phase.DATA:
-                if not self.opened.is_set() or self.write_closed.is_set():
-                    return
+    async def handshake(self) -> bool:
+        return True
 
-                if packet.ack:
-                    await self.dequeue_send(seq=packet.seq)
-                else:
-                    await self.recv(seq=packet.seq, data=packet.data, drain=packet.drain)
-            case Phase.CLOSE:
-                if packet.ack:
-                    self.read_closed.set()
-                else:
-                    await self.send_ack_close()
-                    self.write_closed.set()
-            case _:
-                self.telemetry.type_errors += 1
-
-    async def _stream(self) -> None:
-        while self.opened.is_set():
-            try:
-                data = await asyncio.wait_for(self.read(), self.tuning.timeout)
-            except TimeoutError:
-                continue
-
-            if not data:
-                break
-
-            for idx in range(0, len(data), self.tuning.payload):
-                await self.enqueue_send(
-                    data=data[idx:idx + self.tuning.payload],
-                    drain=True if len(data) - idx <= self.tuning.payload else False,
-                )
-
-    async def _terminate(self) -> None:
+    async def terminate(self) -> None:
         self.proxy.links.pop(self.addr, None)
