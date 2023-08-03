@@ -74,16 +74,14 @@ class Relay(Ouija, asyncio.DatagramProtocol):
 
     async def sendto(self, *, data: bytes) -> None:
         self.transport.sendto(data)
-        self.telemetry.packets_sent += 1
-        self.telemetry.bytes_sent += len(data)
-        if len(data) > self.telemetry.max_packet_size:
-            self.telemetry.max_packet_size = len(data)
 
-    async def phase_open(self, *, packet: Packet) -> None:
-        if packet.ack and not self.opened.is_set():
-            await self.write(data=packet.data, drain=packet.drain)
-            self.opened.set()
-            self.telemetry.opened += 1
+    async def open(self, *, packet: Packet) -> bool:
+        if not packet.ack or self.opened.is_set():
+            return False
+
+        await self.write(data=packet.data, drain=packet.drain)
+        self.opened.set()
+        return True
 
     async def handshake(self) -> bool:
         loop = asyncio.get_event_loop()
@@ -94,6 +92,6 @@ class Relay(Ouija, asyncio.DatagramProtocol):
 
         return True
 
-    async def _close(self) -> None:
+    async def close(self) -> None:
         if not self.transport.is_closing():
             self.transport.close()

@@ -43,27 +43,23 @@ class Link(Ouija):
 
     async def sendto(self, *, data: bytes) -> None:
         self.proxy.transport.sendto(data, self.addr)
-        self.telemetry.packets_sent += 1
-        self.telemetry.bytes_sent += len(data)
-        if len(data) > self.telemetry.max_packet_size:
-            self.telemetry.max_packet_size = len(data)
 
-    async def phase_open(self, *, packet: Packet) -> None:
-        if not self.opened.is_set():
-            self.remote_host = packet.host
-            self.remote_port = packet.port
+    async def open(self, *, packet: Packet) -> bool:
+        if self.opened.is_set():
+            await self.send_ack_open()
+            return False
 
-            self.reader, self.writer = await asyncio.open_connection(self.remote_host, self.remote_port)
-            self.opened.set()
-            self.proxy.links[self.addr] = self
-
-            asyncio.create_task(self.serve())
-            self.telemetry.opened += 1
-
+        self.remote_host = packet.host
+        self.remote_port = packet.port
+        self.reader, self.writer = await asyncio.open_connection(self.remote_host, self.remote_port)
+        self.opened.set()
+        asyncio.create_task(self.serve())
+        self.proxy.links[self.addr] = self
         await self.send_ack_open()
+        return True
 
     async def handshake(self) -> bool:
         return True
 
-    async def _close(self) -> None:
+    async def close(self) -> None:
         self.proxy.links.pop(self.addr, None)
