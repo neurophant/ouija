@@ -58,7 +58,7 @@ class Packet:
     async def packet(*, data: bytes, fernet: Fernet) -> 'Packet':
         json = pbjson.loads(fernet.decrypt(data))
         return Packet(
-            phase=json.get(TOKENS['phase']),
+            phase=Phase(json.get(TOKENS['phase'])),
             ack=json.get(TOKENS['ack']),
             token=json.get(TOKENS['token'], None),
             host=json.get(TOKENS['host'], None),

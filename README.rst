@@ -17,11 +17,13 @@ Tuning:
 
 * fernet - Fernet instance with provided secret key - use Fernet.generate_key()
 * token - your secret token - UUID4 or anything else
-* serving - timeout per worker
-* timeout - TCP stream/UDP awaiting timeout
-* payload - UDP payload size
-* retries - UDP max retry count per interaction
-* capacity - UDP read/write buffer capacity
+* serving_timeout - total timeout per worker in seconds
+* tcp_buffer - TCP buffer size in bytes
+* tcp_timeout - TCP awaiting timeout in seconds
+* udp_payload - UDP payload size in bytes
+* udp_timeout - UDP awaiting timeout in seconds
+* udp_retries - UDP max retry count per interaction
+* udp_capacity - UDP send/receive buffer capacity in packets
 
 Requirements
 ------------

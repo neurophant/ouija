@@ -12,7 +12,7 @@ from .utils import RawParser
 logging.basicConfig(
     format='%(asctime)s,%(msecs)03d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s',
     datefmt='%Y-%m-%d:%H:%M:%S',
-    level=logging.DEBUG,
+    level=logging.ERROR,
 )
 logger = logging.getLogger(__name__)
 
@@ -71,7 +71,7 @@ class Interface:
 
     async def session(self, *, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
         try:
-            await asyncio.wait_for(self._session(reader=reader, writer=writer), self.tuning.serving)
+            await asyncio.wait_for(self._session(reader=reader, writer=writer), self.tuning.serving_timeout)
         except asyncio.TimeoutError:
             logger.error('Timeout')
 

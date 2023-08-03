@@ -12,7 +12,7 @@ from .packet import Phase, Packet
 logging.basicConfig(
     format='%(asctime)s,%(msecs)03d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s',
     datefmt='%Y-%m-%d:%H:%M:%S',
-    level=logging.DEBUG,
+    level=logging.ERROR,
 )
 logger = logging.getLogger(__name__)
 
@@ -44,10 +44,10 @@ class Ouija:
             self.telemetry.max_packet_size = len(data)
 
     async def send_retry(self, *, data: bytes, event: asyncio.Event) -> bool:
-        for _ in range(self.tuning.retries):
+        for _ in range(self.tuning.udp_retries):
             await self.send(data=data)
             try:
-                await asyncio.wait_for(event.wait(), self.tuning.timeout)
+                await asyncio.wait_for(event.wait(), self.tuning.udp_timeout)
             except asyncio.TimeoutError:
                 self.telemetry.resent += 1
                 continue
@@ -57,7 +57,7 @@ class Ouija:
             return False
 
     async def read(self) -> bytes:
-        return await self.reader.read(self.tuning.buffer)
+        return await self.reader.read(self.tuning.tcp_buffer)
 
     async def write(self, *, data: bytes, drain: bool) -> None:
         self.writer.write(data)
@@ -78,7 +78,7 @@ class Ouija:
 
         await self.send_ack_data(seq=seq)
 
-        if len(self.recv_buf) >= self.tuning.capacity:
+        if len(self.recv_buf) >= self.tuning.udp_capacity:
             await self.close()
             self.telemetry.recv_buf_overloads += 1
 
@@ -95,7 +95,7 @@ class Ouija:
         await self.send(data=data_)
         self.sent_seq += 1
 
-        if len(self.sent_buf) >= self.tuning.capacity:
+        if len(self.sent_buf) >= self.tuning.udp_capacity:
             await self.close()
             self.telemetry.sent_buf_overloads += 1
 
@@ -202,17 +202,17 @@ class Ouija:
 
     async def resend_packets(self) -> None:
         while self.opened.is_set() or self.sent_buf:
-            await asyncio.sleep(self.tuning.timeout)
+            await asyncio.sleep(self.tuning.udp_timeout)
 
             for seq in sorted(self.sent_buf.keys()):
                 delta = int(time.time()) - self.sent_buf[seq].timestamp
 
-                if delta >= self.tuning.serving or self.sent_buf[seq].retries >= self.tuning.retries:
+                if delta >= self.tuning.serving_timeout or self.sent_buf[seq].retries >= self.tuning.udp_retries:
                     await self.close()
                     self.telemetry.unfinished += 1
                     break
 
-                if delta >= self.tuning.timeout:
+                if delta >= self.tuning.udp_timeout:
                     await self.send(data=self.sent_buf[seq].data)
                     self.sent_buf[seq].retries += 1
                     self.telemetry.resent += 1
@@ -220,13 +220,13 @@ class Ouija:
         await self.send_close()
 
         try:
-            await asyncio.wait_for(self.write_closed.wait(), self.tuning.serving)
+            await asyncio.wait_for(self.write_closed.wait(), self.tuning.serving_timeout)
         except asyncio.TimeoutError:
             pass
 
     async def resend(self) -> None:
         try:
-            await asyncio.wait_for(self.resend_packets(), self.tuning.serving)
+            await asyncio.wait_for(self.resend_packets(), self.tuning.serving_timeout)
         except asyncio.TimeoutError:
             self.telemetry.timeout_errors += 1
         except Exception as e:
@@ -246,22 +246,22 @@ class Ouija:
 
         while self.opened.is_set():
             try:
-                data = await asyncio.wait_for(self.read(), self.tuning.timeout)
+                data = await asyncio.wait_for(self.read(), self.tuning.tcp_timeout)
             except TimeoutError:
                 continue
 
             if not data:
                 break
 
-            for idx in range(0, len(data), self.tuning.payload):
+            for idx in range(0, len(data), self.tuning.udp_payload):
                 await self.enqueue_send(
-                    data=data[idx:idx + self.tuning.payload],
-                    drain=True if len(data) - idx <= self.tuning.payload else False,
+                    data=data[idx:idx + self.tuning.udp_payload],
+                    drain=True if len(data) - idx <= self.tuning.udp_payload else False,
                 )
 
     async def serve(self) -> None:
         try:
-            await asyncio.wait_for(self.serve_stream(), self.tuning.serving)
+            await asyncio.wait_for(self.serve_stream(), self.tuning.serving_timeout)
         except asyncio.TimeoutError:
             self.telemetry.timeout_errors += 1
         except ConnectionError as e:

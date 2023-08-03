@@ -8,12 +8,13 @@ async def main() -> None:
     tuning = Tuning(
         fernet=settings.fernet,
         token=settings.TOKEN,
-        buffer=settings.BUFFER,
-        serving=settings.SERVING,
-        timeout=settings.TIMEOUT,
-        payload=settings.PAYLOAD,
-        retries=settings.RETRIES,
-        capacity=settings.CAPACITY,
+        serving_timeout=settings.SERVING_TIMEOUT,
+        tcp_buffer=settings.TCP_BUFFER,
+        tcp_timeout=settings.TCP_TIMEOUT,
+        udp_payload=settings.UDP_PAYLOAD,
+        udp_timeout=settings.UDP_TIMEOUT,
+        udp_retries=settings.UDP_RETRIES,
+        udp_capacity=settings.UDP_CAPACITY,
     )
     proxy = Proxy(
         telemetry=Telemetry(),
