@@ -21,13 +21,14 @@ async def main() -> None:
         proxy_host=settings.PROXY_HOST,
         proxy_port=settings.PROXY_PORT,
     )
-    loop = asyncio.get_event_loop()
-    loop.create_task(interface.cleanup())
-    loop.create_task(interface.monitor())
+    asyncio.create_task(interface.cleanup())
+    asyncio.create_task(interface.monitor())
     server = await asyncio.start_server(interface.serve, settings.RELAY_HOST, settings.RELAY_PORT)
     async with server:
         await server.serve_forever()
 
 
 if __name__ == '__main__':
-    asyncio.run(main())
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(main())
+    loop.run_forever()

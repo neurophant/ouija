@@ -4,7 +4,7 @@ import settings
 from ouija import Proxy, Telemetry, Tuning
 
 
-def main() -> None:
+async def main() -> None:
     tuning = Tuning(
         fernet=settings.fernet,
         token=settings.TOKEN,
@@ -21,12 +21,12 @@ def main() -> None:
         proxy_host=settings.PROXY_HOST,
         proxy_port=settings.PROXY_PORT,
     )
-    loop = asyncio.get_event_loop()
-    loop.create_task(proxy.cleanup())
-    loop.create_task(proxy.monitor())
-    loop.run_until_complete(proxy.serve())
-    loop.run_forever()
+    asyncio.create_task(proxy.cleanup())
+    asyncio.create_task(proxy.monitor())
+    await proxy.serve()
 
 
 if __name__ == '__main__':
-    main()
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(main())
+    loop.run_forever()

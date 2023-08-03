@@ -64,15 +64,13 @@ class Relay(Ouija, asyncio.DatagramProtocol):
         await self.process(packet=packet)
 
     def datagram_received(self, data, addr) -> None:
-        loop = asyncio.get_event_loop()
-        loop.create_task(self._datagram_received_async(data=data, addr=addr))
+        asyncio.create_task(self._datagram_received_async(data=data, addr=addr))
 
     def error_received(self, exc) -> None:
         logger.error(exc)
 
     def connection_lost(self, exc) -> None:
-        loop = asyncio.get_event_loop()
-        loop.create_task(self.close())
+        asyncio.create_task(self.close())
 
     async def sendto(self, *, data: bytes) -> None:
         self.transport.sendto(data)
@@ -94,9 +92,8 @@ class Relay(Ouija, asyncio.DatagramProtocol):
         if not await self.send_open():
             return False
 
-        loop.create_task(self.finish())
         return True
 
-    async def terminate(self) -> None:
+    async def _close(self) -> None:
         if not self.transport.is_closing():
             self.transport.close()

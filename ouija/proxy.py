@@ -49,8 +49,7 @@ class Proxy(asyncio.DatagramProtocol):
         await link.process(packet=packet)
 
     def datagram_received(self, data, addr) -> None:
-        loop = asyncio.get_event_loop()
-        loop.create_task(self._datagram_received_async(data=data, addr=addr))
+        asyncio.create_task(self._datagram_received_async(data=data, addr=addr))
 
     def error_received(self, exc) -> None:
         logger.error(exc)

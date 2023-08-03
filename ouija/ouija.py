@@ -197,7 +197,7 @@ class Ouija:
             logger.error(e)
             self.telemetry.processing_errors += 1
 
-    async def _finish(self) -> None:
+    async def _resend(self) -> None:
         while self.opened.is_set() or self.sent_buf:
             await asyncio.sleep(self.tuning.timeout)
 
@@ -221,23 +221,25 @@ class Ouija:
         except asyncio.TimeoutError:
             pass
 
-    async def finish(self) -> None:
+    async def resend(self) -> None:
         try:
-            await asyncio.wait_for(self._finish(), self.tuning.serving)
+            await asyncio.wait_for(self._resend(), self.tuning.serving)
         except asyncio.TimeoutError:
             self.telemetry.timeout_errors += 1
         except Exception as e:
             logger.error(e)
-            self.telemetry.finishing_errors += 1
+            self.telemetry.resending_errors += 1
         finally:
             await self.close()
 
     async def handshake(self) -> bool:
         raise NotImplementedError
 
-    async def _stream(self) -> None:
+    async def _serve(self) -> None:
         if not await self.handshake():
             return
+
+        asyncio.create_task(self.resend())
 
         while self.opened.is_set():
             try:
@@ -254,9 +256,9 @@ class Ouija:
                     drain=True if len(data) - idx <= self.tuning.payload else False,
                 )
 
-    async def stream(self) -> None:
+    async def serve(self) -> None:
         try:
-            await asyncio.wait_for(self._stream(), self.tuning.serving)
+            await asyncio.wait_for(self._serve(), self.tuning.serving)
         except asyncio.TimeoutError:
             self.telemetry.timeout_errors += 1
         except ConnectionError as e:
@@ -264,9 +266,9 @@ class Ouija:
             self.telemetry.connection_errors += 1
         except Exception as e:
             logger.error(e)
-            self.telemetry.streaming_errors += 1
+            self.telemetry.serving_errors += 1
 
-    async def terminate(self) -> None:
+    async def _close(self) -> None:
         raise NotImplementedError
 
     async def close(self) -> None:
@@ -278,6 +280,5 @@ class Ouija:
             self.writer.close()
             await self.writer.wait_closed()
 
+        await self._close()
         self.telemetry.closed += 1
-
-        await self.terminate()

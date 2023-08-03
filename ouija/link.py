@@ -56,9 +56,8 @@ class Link(Ouija):
             self.reader, self.writer = await asyncio.open_connection(self.remote_host, self.remote_port)
             self.opened.set()
             self.proxy.links[self.addr] = self
-            loop = asyncio.get_event_loop()
-            loop.create_task(self.stream())
-            loop.create_task(self.finish())
+
+            asyncio.create_task(self.serve())
             self.telemetry.opened += 1
 
         await self.send_ack_open()
@@ -66,5 +65,5 @@ class Link(Ouija):
     async def handshake(self) -> bool:
         return True
 
-    async def terminate(self) -> None:
+    async def _close(self) -> None:
         self.proxy.links.pop(self.addr, None)

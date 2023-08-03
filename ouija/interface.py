@@ -51,7 +51,7 @@ class Interface:
             remote_host=remote_host,
             remote_port=remote_port,
         )
-        await relay.stream()
+        await relay.serve()
 
     async def _session(self, *, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
         data = await reader.readuntil(b'\r\n\r\n')
@@ -76,8 +76,7 @@ class Interface:
             logger.error('Timeout')
 
     async def serve(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
-        loop = asyncio.get_event_loop()
-        self.sessions[self.index] = loop.create_task(self._session(reader=reader, writer=writer))
+        self.sessions[self.index] = asyncio.create_task(self._session(reader=reader, writer=writer))
         self.index += 1
 
     async def cleanup(self) -> None:
