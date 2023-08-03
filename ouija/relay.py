@@ -36,7 +36,6 @@ class Relay(Ouija, asyncio.DatagramProtocol):
         self.tuning = tuning
         self.reader = reader
         self.writer = writer
-        self.wrote = 0
         self.proxy_host = proxy_host
         self.proxy_port = proxy_port
         self.remote_host = remote_host
@@ -72,14 +71,14 @@ class Relay(Ouija, asyncio.DatagramProtocol):
     def connection_lost(self, exc) -> None:
         asyncio.create_task(self.close())
 
-    async def sendto(self, *, data: bytes) -> None:
+    async def send(self, *, data: bytes) -> None:
         self.transport.sendto(data)
 
     async def open(self, *, packet: Packet) -> bool:
         if not packet.ack or self.opened.is_set():
             return False
 
-        await self.write(data=packet.data, drain=packet.drain)
+        await self.write(data=b'HTTP/1.1 200 Connection Established\r\n\r\n', drain=True)
         self.opened.set()
         return True
 

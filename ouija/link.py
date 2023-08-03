@@ -41,7 +41,7 @@ class Link(Ouija):
         self.recv_seq = 0
         self.write_closed = asyncio.Event()
 
-    async def sendto(self, *, data: bytes) -> None:
+    async def send(self, *, data: bytes) -> None:
         self.proxy.transport.sendto(data, self.addr)
 
     async def open(self, *, packet: Packet) -> bool:

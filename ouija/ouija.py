@@ -32,20 +32,20 @@ class Ouija:
     recv_seq: int
     write_closed: asyncio.Event
 
-    async def sendto(self, *, data: bytes) -> None:
+    async def send(self, *, data: bytes) -> None:
         raise NotImplementedError
 
-    async def _sendto(self, *, data: bytes) -> None:
-        await self.sendto(data=data)
+    async def _send(self, *, data: bytes) -> None:
+        await self.send(data=data)
 
         self.telemetry.packets_sent += 1
         self.telemetry.bytes_sent += len(data)
         if len(data) > self.telemetry.max_packet_size:
             self.telemetry.max_packet_size = len(data)
 
-    async def sendto_retry(self, *, data: bytes, event: asyncio.Event) -> bool:
+    async def send_retry(self, *, data: bytes, event: asyncio.Event) -> bool:
         for _ in range(self.tuning.retries):
-            await self._sendto(data=data)
+            await self._send(data=data)
             try:
                 await asyncio.wait_for(event.wait(), self.tuning.timeout)
             except asyncio.TimeoutError:
@@ -92,7 +92,7 @@ class Ouija:
         )
         data_ = await data_packet.binary(fernet=self.tuning.fernet)
         self.sent_buf[self.sent_seq] = Sent(data=data_)
-        await self._sendto(data=data_)
+        await self._send(data=data_)
         self.sent_seq += 1
 
         if len(self.sent_buf) >= self.tuning.capacity:
@@ -110,7 +110,7 @@ class Ouija:
             host=self.remote_host,
             port=self.remote_port,
         )
-        if not await self.sendto_retry(
+        if not await self.send_retry(
                 data=await open_packet.binary(fernet=self.tuning.fernet),
                 event=self.opened,
         ):
@@ -123,10 +123,8 @@ class Ouija:
             phase=Phase.OPEN,
             ack=True,
             token=self.tuning.token,
-            data=b'HTTP/1.1 200 Connection Established\r\n\r\n',
-            drain=True,
         )
-        await self._sendto(data=await open_ack_packet.binary(fernet=self.tuning.fernet))
+        await self._send(data=await open_ack_packet.binary(fernet=self.tuning.fernet))
 
     async def check_token(self, *, token: str) -> bool:
         if token == self.tuning.token:
@@ -142,14 +140,14 @@ class Ouija:
             ack=True,
             seq=seq,
         )
-        await self._sendto(data=await data_ack_packet.binary(fernet=self.tuning.fernet))
+        await self._send(data=await data_ack_packet.binary(fernet=self.tuning.fernet))
 
     async def send_close(self) -> None:
         close_packet = Packet(
             phase=Phase.CLOSE,
             ack=False,
         )
-        await self.sendto_retry(
+        await self.send_retry(
             data=await close_packet.binary(fernet=self.tuning.fernet),
             event=self.read_closed,
         )
@@ -159,7 +157,7 @@ class Ouija:
             phase=Phase.CLOSE,
             ack=True,
         )
-        await self._sendto(data=await close_ack_packet.binary(fernet=self.tuning.fernet))
+        await self._send(data=await close_ack_packet.binary(fernet=self.tuning.fernet))
 
     async def open(self, packet: Packet) -> bool:
         raise NotImplementedError
@@ -215,7 +213,7 @@ class Ouija:
                     break
 
                 if delta >= self.tuning.timeout:
-                    await self._sendto(data=self.sent_buf[seq].data)
+                    await self._send(data=self.sent_buf[seq].data)
                     self.sent_buf[seq].retries += 1
                     self.telemetry.resent += 1
 
