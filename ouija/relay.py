@@ -71,10 +71,10 @@ class Relay(Ouija, asyncio.DatagramProtocol):
     def connection_lost(self, exc) -> None:
         asyncio.create_task(self.close())
 
-    async def send(self, *, data: bytes) -> None:
+    async def sendto(self, *, data: bytes) -> None:
         self.transport.sendto(data)
 
-    async def open(self, *, packet: Packet) -> bool:
+    async def on_open(self, *, packet: Packet) -> bool:
         if not packet.ack or self.opened.is_set():
             return False
 
@@ -82,7 +82,7 @@ class Relay(Ouija, asyncio.DatagramProtocol):
         self.opened.set()
         return True
 
-    async def handshake(self) -> bool:
+    async def on_serve(self) -> bool:
         loop = asyncio.get_event_loop()
         await loop.create_datagram_endpoint(lambda: self, remote_addr=(self.proxy_host, self.proxy_port))
 
@@ -91,6 +91,6 @@ class Relay(Ouija, asyncio.DatagramProtocol):
 
         return True
 
-    async def close(self) -> None:
+    async def on_close(self) -> None:
         if not self.transport.is_closing():
             self.transport.close()

@@ -41,10 +41,10 @@ class Link(Ouija):
         self.recv_seq = 0
         self.write_closed = asyncio.Event()
 
-    async def send(self, *, data: bytes) -> None:
+    async def sendto(self, *, data: bytes) -> None:
         self.proxy.transport.sendto(data, self.addr)
 
-    async def open(self, *, packet: Packet) -> bool:
+    async def on_open(self, *, packet: Packet) -> bool:
         if self.opened.is_set():
             await self.send_ack_open()
             return False
@@ -58,8 +58,8 @@ class Link(Ouija):
         await self.send_ack_open()
         return True
 
-    async def handshake(self) -> bool:
+    async def on_serve(self) -> bool:
         return True
 
-    async def close(self) -> None:
+    async def on_close(self) -> None:
         self.proxy.links.pop(self.addr, None)
