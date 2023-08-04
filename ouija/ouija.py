@@ -40,16 +40,18 @@ class Ouija:
 
         self.telemetry.packets_sent += 1
         self.telemetry.bytes_sent += len(data)
-        if len(data) > self.telemetry.max_packet_size:
-            self.telemetry.max_packet_size = len(data)
 
-    async def send_retry(self, *, data: bytes, event: asyncio.Event) -> bool:
+    async def send_packet(self, *, packet: Packet) -> bytes:
+        data = await packet.binary(fernet=self.tuning.fernet)
+        await self.send(data=data)
+        return data
+
+    async def send_retry(self, *, packet: Packet, event: asyncio.Event) -> bool:
         for _ in range(self.tuning.udp_retries):
-            await self.send(data=data)
+            await self.send_packet(packet=packet)
             try:
                 await asyncio.wait_for(event.wait(), self.tuning.udp_timeout)
             except asyncio.TimeoutError:
-                self.telemetry.resent += 1
                 continue
             else:
                 return True
@@ -80,7 +82,6 @@ class Ouija:
 
         if len(self.recv_buf) >= self.tuning.udp_capacity:
             await self.close()
-            self.telemetry.recv_buf_overloads += 1
 
     async def enqueue_send(self, *, data: bytes, drain: bool) -> None:
         data_packet = Packet(
@@ -90,14 +91,11 @@ class Ouija:
             data=data,
             drain=drain,
         )
-        data_ = await data_packet.binary(fernet=self.tuning.fernet)
-        self.sent_buf[self.sent_seq] = Sent(data=data_)
-        await self.send(data=data_)
+        self.sent_buf[self.sent_seq] = Sent(data=await self.send_packet(packet=data_packet))
         self.sent_seq += 1
 
         if len(self.sent_buf) >= self.tuning.udp_capacity:
             await self.close()
-            self.telemetry.sent_buf_overloads += 1
 
     async def dequeue_send(self, *, seq: int) -> None:
         self.sent_buf.pop(seq, None)
@@ -110,10 +108,7 @@ class Ouija:
             host=self.remote_host,
             port=self.remote_port,
         )
-        if not await self.send_retry(
-                data=await open_packet.binary(fernet=self.tuning.fernet),
-                event=self.opened,
-        ):
+        if not await self.send_retry(packet=open_packet, event=self.opened):
             return False
 
         return True
@@ -124,7 +119,7 @@ class Ouija:
             ack=True,
             token=self.tuning.token,
         )
-        await self.send(data=await open_ack_packet.binary(fernet=self.tuning.fernet))
+        await self.send_packet(packet=open_ack_packet)
 
     async def check_token(self, *, token: str) -> bool:
         if token == self.tuning.token:
@@ -140,29 +135,31 @@ class Ouija:
             ack=True,
             seq=seq,
         )
-        await self.send(data=await data_ack_packet.binary(fernet=self.tuning.fernet))
+        await self.send_packet(packet=data_ack_packet)
 
     async def send_close(self) -> None:
         close_packet = Packet(
             phase=Phase.CLOSE,
             ack=False,
         )
-        await self.send_retry(
-            data=await close_packet.binary(fernet=self.tuning.fernet),
-            event=self.read_closed,
-        )
+        await self.send_retry(packet=close_packet, event=self.read_closed)
 
     async def send_ack_close(self) -> None:
         close_ack_packet = Packet(
             phase=Phase.CLOSE,
             ack=True,
         )
-        await self.send(data=await close_ack_packet.binary(fernet=self.tuning.fernet))
+        await self.send_packet(packet=close_ack_packet)
 
     async def on_open(self, packet: Packet) -> bool:
         raise NotImplementedError
 
-    async def process_packet(self, *, packet: Packet) -> None:
+    async def process_packet(self, *, data: bytes) -> None:
+        self.telemetry.packets_received += 1
+        self.telemetry.bytes_received += len(data)
+
+        packet = await Packet.packet(data=data, fernet=self.tuning.fernet)
+
         match packet.phase:
             case Phase.OPEN:
                 if not await self.check_token(token=packet.token):
@@ -189,9 +186,9 @@ class Ouija:
             case _:
                 self.telemetry.type_errors += 1
 
-    async def process(self, *, packet: Packet) -> None:
+    async def process(self, *, data: bytes) -> None:
         try:
-            await self.process_packet(packet=packet)
+            await self.process_packet(data=data)
         except ConnectionError as e:
             logger.error(e)
             self.telemetry.connection_errors += 1
@@ -209,13 +206,11 @@ class Ouija:
 
                 if delta >= self.tuning.serving_timeout or self.sent_buf[seq].retries >= self.tuning.udp_retries:
                     await self.close()
-                    self.telemetry.unfinished += 1
                     break
 
                 if delta >= self.tuning.udp_timeout:
                     await self.send(data=self.sent_buf[seq].data)
                     self.sent_buf[seq].retries += 1
-                    self.telemetry.resent += 1
 
         await self.send_close()
 

@@ -3,7 +3,6 @@ import os
 from typing import Dict, Tuple
 import logging
 
-from .packet import Packet
 from .telemetry import Telemetry
 from .tuning import Tuning
 from .link import Link
@@ -36,17 +35,8 @@ class Proxy(asyncio.DatagramProtocol):
         self.transport = transport
 
     async def _datagram_received_async(self, *, data, addr) -> None:
-        self.telemetry.packets_received += 1
-        self.telemetry.bytes_received += len(data)
-        try:
-            packet = await Packet.packet(data=data, fernet=self.tuning.fernet)
-        except Exception as e:
-            logger.error(e)
-            self.telemetry.decoding_errors += 1
-            return
-
         link = self.links.get(addr, Link(telemetry=self.telemetry, proxy=self, addr=addr, tuning=self.tuning))
-        await link.process(packet=packet)
+        await link.process(data=data)
 
     def datagram_received(self, data, addr) -> None:
         asyncio.create_task(self._datagram_received_async(data=data, addr=addr))

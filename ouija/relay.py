@@ -52,15 +52,7 @@ class Relay(Ouija, asyncio.DatagramProtocol):
         self.transport = transport
 
     async def _datagram_received_async(self, *, data, addr) -> None:
-        self.telemetry.packets_received += 1
-        self.telemetry.bytes_received += len(data)
-        try:
-            packet = await Packet.packet(data=data, fernet=self.tuning.fernet)
-        except Exception as e:
-            logger.error(e)
-            self.telemetry.decoding_errors += 1
-            return
-        await self.process(packet=packet)
+        await self.process(data=data)
 
     def datagram_received(self, data, addr) -> None:
         asyncio.create_task(self._datagram_received_async(data=data, addr=addr))
