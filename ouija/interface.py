@@ -6,7 +6,7 @@ from typing import Dict
 from .tuning import Tuning
 from .relay import Relay
 from .telemetry import Telemetry
-from .utils import RawParser
+from .rawparser import RawParser
 
 
 logging.basicConfig(
