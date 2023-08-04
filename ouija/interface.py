@@ -85,7 +85,7 @@ class Interface:
             for index in sorted(self.sessions.keys()):
                 if self.sessions[index].done():
                     self.sessions.pop(index)
-            self.telemetry.links = len(self.sessions)
+            self.telemetry.link(links=len(self.sessions))
 
     async def monitor(self) -> None:
         while True:

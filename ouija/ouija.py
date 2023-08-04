@@ -5,8 +5,7 @@ from typing import Optional, Dict
 
 from .telemetry import Telemetry
 from .tuning import Tuning
-from .primitives import Sent, Received
-from .packet import Phase, Packet
+from .packet import Phase, Packet, Sent, Received
 
 
 logging.basicConfig(
@@ -37,9 +36,7 @@ class Ouija:
 
     async def send(self, *, data: bytes) -> None:
         await self.sendto(data=data)
-
-        self.telemetry.packets_sent += 1
-        self.telemetry.bytes_sent += len(data)
+        self.telemetry.send(data=data)
 
     async def send_packet(self, *, packet: Packet) -> bytes:
         data = await packet.binary(fernet=self.tuning.fernet)
@@ -82,6 +79,7 @@ class Ouija:
 
         if len(self.recv_buf) >= self.tuning.udp_capacity:
             await self.close()
+            self.telemetry.recv_buf_overload()
 
     async def enqueue_send(self, *, data: bytes, drain: bool) -> None:
         data_packet = Packet(
@@ -96,6 +94,7 @@ class Ouija:
 
         if len(self.sent_buf) >= self.tuning.udp_capacity:
             await self.close()
+            self.telemetry.send_buf_overload()
 
     async def dequeue_send(self, *, seq: int) -> None:
         self.sent_buf.pop(seq, None)
@@ -126,7 +125,7 @@ class Ouija:
             return True
 
         await self.close()
-        self.telemetry.token_errors += 1
+        self.telemetry.token_error()
         return False
 
     async def send_ack_data(self, *, seq: int) -> None:
@@ -155,9 +154,7 @@ class Ouija:
         raise NotImplementedError
 
     async def process_packet(self, *, data: bytes) -> None:
-        self.telemetry.packets_received += 1
-        self.telemetry.bytes_received += len(data)
-
+        self.telemetry.recv(data=data)
         packet = await Packet.packet(data=data, fernet=self.tuning.fernet)
 
         match packet.phase:
@@ -168,7 +165,7 @@ class Ouija:
                 if not await self.on_open(packet=packet):
                     return
 
-                self.telemetry.opened += 1
+                self.telemetry.open()
             case Phase.DATA:
                 if not self.opened.is_set() or self.write_closed.is_set():
                     return
@@ -184,18 +181,18 @@ class Ouija:
                     await self.send_ack_close()
                     self.write_closed.set()
             case _:
-                self.telemetry.type_errors += 1
+                self.telemetry.type_error()
 
     async def process(self, *, data: bytes) -> None:
         try:
             await self.process_packet(data=data)
         except ConnectionError as e:
             logger.error(e)
-            self.telemetry.connection_errors += 1
+            self.telemetry.connection_error()
         except Exception as e:
             await self.close()
             logger.error(e)
-            self.telemetry.processing_errors += 1
+            self.telemetry.processing_error()
 
     async def resend_packets(self) -> None:
         while self.opened.is_set() or self.sent_buf:
@@ -223,10 +220,10 @@ class Ouija:
         try:
             await asyncio.wait_for(self.resend_packets(), self.tuning.serving_timeout)
         except asyncio.TimeoutError:
-            self.telemetry.timeout_errors += 1
+            self.telemetry.timeout_error()
         except Exception as e:
             logger.error(e)
-            self.telemetry.resending_errors += 1
+            self.telemetry.resending_error()
         finally:
             await self.close()
 
@@ -258,20 +255,20 @@ class Ouija:
         try:
             await asyncio.wait_for(self.serve_stream(), self.tuning.serving_timeout)
         except asyncio.TimeoutError:
-            self.telemetry.timeout_errors += 1
+            self.telemetry.timeout_error()
         except ConnectionError as e:
             logger.error(e)
-            self.telemetry.connection_errors += 1
+            self.telemetry.connection_error()
         except Exception as e:
             logger.error(e)
-            self.telemetry.serving_errors += 1
+            self.telemetry.serving_error()
 
     async def on_close(self) -> None:
         raise NotImplementedError
 
     async def close(self) -> None:
         if self.opened.is_set():
-            self.telemetry.closed += 1
+            self.telemetry.close()
 
         self.opened.clear()
         self.read_closed.set()

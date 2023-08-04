@@ -1,3 +1,5 @@
+import dataclasses
+import time
 from enum import IntEnum
 from typing import Optional
 
@@ -23,36 +25,16 @@ TOKENS = {
 }
 
 
+@dataclasses.dataclass(kw_only=True)
 class Packet:
     phase: Phase
     ack: bool
-    token: Optional[str]
-    host: Optional[str]
-    port: Optional[int]
-    seq: Optional[int]
-    data: Optional[bytes]
-    drain: Optional[bool]
-
-    def __init__(
-            self, 
-            *, 
-            phase: Phase,
-            ack: bool,
-            token: Optional[str] = None,
-            host: Optional[str] = None,
-            port: Optional[int] = None,
-            seq: Optional[int] = None,
-            data: Optional[bytes] = None,
-            drain: Optional[bool] = None,
-    ) -> None:
-        self.phase = phase
-        self.ack = ack
-        self.token = token
-        self.host = host
-        self.port = port
-        self.seq = seq
-        self.data = data
-        self.drain = drain
+    token: Optional[str] = None
+    host: Optional[str] = None
+    port: Optional[int] = None
+    seq: Optional[int] = None
+    data: Optional[bytes] = None
+    drain: Optional[bool] = None
 
     @staticmethod
     async def packet(*, data: bytes, fernet: Fernet) -> 'Packet':
@@ -70,3 +52,16 @@ class Packet:
 
     async def binary(self, *, fernet: Fernet) -> bytes:
         return fernet.encrypt(pbjson.dumps({TOKENS[k]: v for k, v in self.__dict__.items() if v is not None}))
+
+
+@dataclasses.dataclass(kw_only=True)
+class Sent:
+    data: bytes
+    timestamp: int = int(time.time())
+    retries: int = 1
+
+
+@dataclasses.dataclass(kw_only=True)
+class Received:
+    data: bytes
+    drain: bool

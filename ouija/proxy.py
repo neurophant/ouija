@@ -55,7 +55,7 @@ class Proxy(asyncio.DatagramProtocol):
     async def cleanup(self) -> None:
         while True:
             await asyncio.sleep(1)
-            self.telemetry.links = len(self.links)
+            self.telemetry.link(links=len(self.links))
 
     async def monitor(self) -> None:
         while True:
