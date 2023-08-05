@@ -8,9 +8,9 @@ class Telemetry:
     opened: int = 0
     closed: int = 0
     packets_sent: int = 0
-    packets_received: int = 0
+    packets_recv: int = 0
     bytes_sent: int = 0
-    bytes_received: int = 0
+    bytes_recv: int = 0
     min_packet_size: int = 0
     max_packet_size: int = 0
     processing_errors: int = 0
@@ -28,8 +28,8 @@ class Telemetry:
             f'{datetime.datetime.now()}\n' \
             f'\tlinks: {self.links:,}\n' \
             f'\topened|closed: {self.opened:,}|{self.closed:,}\n' \
-            f'\tpackets sent|received: {self.packets_sent:,}|{self.packets_received:,}\n' \
-            f'\tbytes sent|received: {self.bytes_sent:,}|{self.bytes_received:,}\n' \
+            f'\tpackets sent|received: {self.packets_sent:,}|{self.packets_recv:,}\n' \
+            f'\tbytes sent|received: {self.bytes_sent:,}|{self.bytes_recv:,}\n' \
             f'\tmin|max packet size: {self.min_packet_size}|{self.max_packet_size}\n' \
             f'\tprocessing|token|type errors: {self.processing_errors:,}|{self.token_errors:,}' \
             f'|{self.type_errors:,}\n' \
@@ -55,8 +55,8 @@ class Telemetry:
             self.max_packet_size = len(data)
 
     def recv(self, *, data: bytes) -> None:
-        self.packets_received += 1
-        self.bytes_received += len(data)
+        self.packets_recv += 1
+        self.bytes_recv += len(data)
         if len(data) < self.min_packet_size or self.min_packet_size == 0:
             self.min_packet_size = len(data)
         if len(data) > self.max_packet_size:
