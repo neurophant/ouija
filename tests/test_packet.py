@@ -13,7 +13,7 @@ from ouija import Phase, Packet
     Packet(phase=Phase.CLOSE, ack=False),
     Packet(phase=Phase.CLOSE, ack=True),
 ))
-def test_packet(packet, fernet):
-    encoded = packet.binary(fernet=fernet)
-    decoded = Packet.packet(data=encoded, fernet=fernet)
+def test_packet(packet, fernet_test):
+    encoded = packet.binary(fernet=fernet_test)
+    decoded = Packet.packet(data=encoded, fernet=fernet_test)
     assert decoded == packet
