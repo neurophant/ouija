@@ -1,6 +1,5 @@
 import asyncio
 from typing import Optional
-from unittest.mock import Mock
 
 import pytest
 from cryptography.fernet import Fernet
@@ -27,8 +26,8 @@ def tuning_test(fernet_test):
         tcp_buffer=1024,
         tcp_timeout=1,
         udp_payload=512,
-        udp_timeout=3,
-        udp_retries=3,
+        udp_timeout=1,
+        udp_retries=2,
         udp_capacity=1000,
     )
 
@@ -44,8 +43,8 @@ class OuijaTest(Ouija):
     ):
         self.telemetry = telemetry
         self.tuning = tuning
-        self.reader = Mock(asyncio.StreamReader)
-        self.writer = Mock(asyncio.StreamWriter)
+        self.reader = None
+        self.writer = None
         self.remote_host = remote_host
         self.remote_port = remote_port
         self.opened = asyncio.Event()
