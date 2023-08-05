@@ -2,6 +2,7 @@ import dataclasses
 import time
 from enum import IntEnum
 from typing import Optional
+import base64
 
 import pbjson
 from cryptography.fernet import Fernet
@@ -37,8 +38,8 @@ class Packet:
     drain: Optional[bool] = None
 
     @staticmethod
-    async def packet(*, data: bytes, fernet: Fernet) -> 'Packet':
-        json = pbjson.loads(fernet.decrypt(data))
+    def packet(*, data: bytes, fernet: Fernet) -> 'Packet':
+        json = pbjson.loads(fernet.decrypt(base64.urlsafe_b64encode(data)))
         return Packet(
             phase=Phase(json.get(TOKENS['phase'])),
             ack=json.get(TOKENS['ack']),
@@ -50,8 +51,9 @@ class Packet:
             drain=json.get(TOKENS['drain'], None),
         )
 
-    async def binary(self, *, fernet: Fernet) -> bytes:
-        return fernet.encrypt(pbjson.dumps({TOKENS[k]: v for k, v in self.__dict__.items() if v is not None}))
+    def binary(self, *, fernet: Fernet) -> bytes:
+        json = {TOKENS[k]: v for k, v in self.__dict__.items() if v is not None}
+        return base64.urlsafe_b64decode(fernet.encrypt(pbjson.dumps(json)))
 
 
 @dataclasses.dataclass(kw_only=True)

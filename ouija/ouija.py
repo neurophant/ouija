@@ -39,7 +39,7 @@ class Ouija:
         self.telemetry.send(data=data)
 
     async def send_packet(self, *, packet: Packet) -> bytes:
-        data = await packet.binary(fernet=self.tuning.fernet)
+        data = packet.binary(fernet=self.tuning.fernet)
         await self.send(data=data)
         return data
 
@@ -155,7 +155,7 @@ class Ouija:
 
     async def process_packet(self, *, data: bytes) -> None:
         self.telemetry.recv(data=data)
-        packet = await Packet.packet(data=data, fernet=self.tuning.fernet)
+        packet = Packet.packet(data=data, fernet=self.tuning.fernet)
 
         match packet.phase:
             case Phase.OPEN:
