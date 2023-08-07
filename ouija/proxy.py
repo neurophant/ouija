@@ -52,12 +52,12 @@ class Proxy(asyncio.DatagramProtocol):
         loop = asyncio.get_event_loop()
         await loop.create_datagram_endpoint(lambda: self, local_addr=(self.proxy_host, self.proxy_port))
 
-    async def cleanup(self) -> None:
+    async def cleanup(self) -> None:    # pragma: no cover
         while True:
             await asyncio.sleep(1)
             self.telemetry.link(links=len(self.links))
 
-    async def monitor(self) -> None:
+    async def monitor(self) -> None:    # pragma: no cover
         while True:
             await asyncio.sleep(1)
             os.system('clear')

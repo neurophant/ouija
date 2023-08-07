@@ -11,7 +11,12 @@ def test_rawparser_connect():
 
 
 def test_rawparser_get():
-    request = RawParser(data=b'GET /index.html')
+    request = RawParser(data=b'GET example.com HTTP/1.1')
+    assert not request.error
+
+
+def test_rawparser_error():
+    request = RawParser(data=b'GET /index.html HTTP/1.1')
     assert request.error
 
 

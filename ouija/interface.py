@@ -19,11 +19,11 @@ logger = logging.getLogger(__name__)
 
 class Interface:
     telemetry: Telemetry
-    __tuning: Tuning
-    __proxy_host: str
-    __proxy_port: int
-    __index: int
-    __sessions: Dict[int, asyncio.Task]
+    tuning: Tuning
+    proxy_host: str
+    proxy_port: int
+    index: int
+    sessions: Dict[int, asyncio.Task]
 
     def __init__(self, *, telemetry: Telemetry, tuning: Tuning, proxy_host: str, proxy_port: int) -> None:
         self.telemetry = telemetry
@@ -53,10 +53,10 @@ class Interface:
         )
         await relay.serve()
 
-    async def _session(self, *, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
+    async def handle_session(self, *, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
         data = await reader.readuntil(b'\r\n\r\n')
         request = RawParser(data=data)
-
+        print(data)
         if request.error:
             logger.error('Parse error')
         elif request.method == 'CONNECT':
@@ -71,15 +71,15 @@ class Interface:
 
     async def session(self, *, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
         try:
-            await asyncio.wait_for(self._session(reader=reader, writer=writer), self.tuning.serving_timeout)
+            await asyncio.wait_for(self.handle_session(reader=reader, writer=writer), self.tuning.serving_timeout)
         except asyncio.TimeoutError:
             logger.error('Timeout')
 
     async def serve(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
-        self.sessions[self.index] = asyncio.create_task(self._session(reader=reader, writer=writer))
+        self.sessions[self.index] = asyncio.create_task(self.session(reader=reader, writer=writer))
         self.index += 1
 
-    async def cleanup(self) -> None:
+    async def cleanup(self) -> None:    # pragma: no cover
         while True:
             await asyncio.sleep(1)
             for index in sorted(self.sessions.keys()):
@@ -87,7 +87,7 @@ class Interface:
                     self.sessions.pop(index)
             self.telemetry.link(links=len(self.sessions))
 
-    async def monitor(self) -> None:
+    async def monitor(self) -> None:    # pragma: no cover
         while True:
             await asyncio.sleep(1)
             os.system('clear')
