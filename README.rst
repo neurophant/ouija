@@ -3,6 +3,12 @@ Ouija
 
 Python library for building and accessing UDP-relayed TCP proxies
 
+|pypi|
+
+.. |pypi| image:: https://badge.fury.io/py/ouija.svg
+    :target: https://badge.fury.io/py/ouija
+    :alt: pypi version
+
 Features
 --------
 
@@ -52,4 +58,6 @@ examples:
 Tests
 -----
 
-TBD
+.. code-block:: bash
+
+    pytest --cov-report html:htmlcov --cov=ouija tests/
