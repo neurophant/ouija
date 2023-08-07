@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock
 import pytest
 from cryptography.fernet import Fernet
 
-from ouija import Telemetry, Tuning, Ouija, Relay
+from ouija import Telemetry, Tuning, Ouija, Relay, Link
 
 
 @pytest.fixture
@@ -88,4 +88,14 @@ def relay_test(telemetry_test, tuning_test):
         proxy_port=50000,
         remote_host='example.com',
         remote_port=443,
+    )
+
+
+@pytest.fixture
+def link_test(telemetry_test, tuning_test):
+    return Link(
+        telemetry=telemetry_test,
+        proxy=AsyncMock(),
+        addr=('127.0.0.1', 60000),
+        tuning=tuning_test,
     )

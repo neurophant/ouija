@@ -8,7 +8,7 @@ from .tuning import Tuning
 from .ouija import Ouija
 
 from typing import TYPE_CHECKING
-if TYPE_CHECKING:
+if TYPE_CHECKING:   # pragma: no cover
     from proxy import Proxy
 
 
@@ -59,7 +59,7 @@ class Link(Ouija):
         return True
 
     async def on_serve(self) -> bool:
-        return True
+        return True     # pragma: no cover
 
     async def on_close(self) -> None:
         self.proxy.links.pop(self.addr, None)
