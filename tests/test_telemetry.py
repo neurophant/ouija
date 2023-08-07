@@ -18,16 +18,16 @@ def test_telemetry_close(telemetry_test):
     assert telemetry_test.closed == 1
 
 
-def test_telemetry_send(telemetry_test):
-    telemetry_test.send(data=b'test data')
+def test_telemetry_send(telemetry_test, data_test):
+    telemetry_test.send(data=data_test)
     assert telemetry_test.packets_sent == 1
     assert telemetry_test.bytes_sent == 9
     assert telemetry_test.min_packet_size == 9
     assert telemetry_test.max_packet_size == 9
 
 
-def test_telemetry_recv(telemetry_test):
-    telemetry_test.recv(data=b'test data')
+def test_telemetry_recv(telemetry_test, data_test):
+    telemetry_test.recv(data=data_test)
     assert telemetry_test.packets_recv == 1
     assert telemetry_test.bytes_recv == 9
     assert telemetry_test.min_packet_size == 9

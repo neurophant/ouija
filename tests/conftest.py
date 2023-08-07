@@ -4,7 +4,17 @@ from typing import Optional
 import pytest
 from cryptography.fernet import Fernet
 
-from ouija import Telemetry, Tuning, Ouija, Packet
+from ouija import Telemetry, Tuning, Ouija
+
+
+@pytest.fixture
+def token_test():
+    return 'secret'
+
+
+@pytest.fixture
+def data_test():
+    return b'Test data'
 
 
 @pytest.fixture
@@ -18,10 +28,10 @@ def telemetry_test():
 
 
 @pytest.fixture
-def tuning_test(fernet_test):
+def tuning_test(fernet_test, token_test):
     return Tuning(
         fernet=fernet_test,
-        token='secret',
+        token=token_test,
         serving_timeout=5,
         tcp_buffer=1024,
         tcp_timeout=1,
@@ -54,18 +64,6 @@ class OuijaTest(Ouija):
         self.recv_buf = dict()
         self.recv_seq = 0
         self.write_closed = asyncio.Event()
-
-    async def sendto(self, *, data: bytes) -> None:
-        pass
-
-    async def on_open(self, packet: Packet) -> bool:
-        pass
-
-    async def on_serve(self) -> bool:
-        pass
-
-    async def on_close(self) -> None:
-        pass
 
 
 @pytest.fixture

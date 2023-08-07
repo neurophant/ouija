@@ -68,12 +68,12 @@ class Ouija:
             self.recv_buf[seq] = Received(data=data, drain=drain)
 
         for seq in sorted(self.recv_buf.keys()):
-            if seq < self.recv_seq:
-                self.recv_buf.pop(seq)
-            if seq == self.recv_seq:
-                recv = self.recv_buf.pop(seq)
-                await self.write(data=recv.data, drain=recv.drain)
-                self.recv_seq += 1
+            if seq != self.recv_seq:
+                continue
+
+            recv = self.recv_buf.pop(seq)
+            await self.write(data=recv.data, drain=recv.drain)
+            self.recv_seq += 1
 
         await self.send_ack_data(seq=seq)
 
@@ -180,7 +180,7 @@ class Ouija:
                 else:
                     await self.send_ack_close()
                     self.write_closed.set()
-            case _:
+            case _:     # pragma: no cover
                 self.telemetry.type_error()
 
     async def process(self, *, data: bytes) -> None:
