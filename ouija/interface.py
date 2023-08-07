@@ -56,7 +56,6 @@ class Interface:
     async def handle_session(self, *, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
         data = await reader.readuntil(b'\r\n\r\n')
         request = RawParser(data=data)
-        print(data)
         if request.error:
             logger.error('Parse error')
         elif request.method == 'CONNECT':

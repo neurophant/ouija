@@ -12,11 +12,16 @@ Python library for building and accessing UDP-relayed TCP proxies
 Features
 --------
 
+.. image:: https://raw.githubusercontent.com/neurophant/ouija/master/ouija.png
+    :alt: Sliding from center to edge - searching for maximum entropy difference
+    :width: 883
+    :height: 363
+
 Classes:
 
 * Tuning - Relay-Proxy settings
 * Interface - basic HTTPS proxy server
-* Relay - HTTPS proxy interface, which communicates with Proxy via encrypted UDP
+* Relay - HTTPS proxy relay, which communicates with Proxy via encrypted UDP
 * Link - Relay link within Proxy
 * Proxy - UDP server, which gets requests from Relay and sends back responses from target TCP servers
 
