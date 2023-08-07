@@ -22,7 +22,7 @@ def tuning_test(fernet_test):
     return Tuning(
         fernet=fernet_test,
         token='secret',
-        serving_timeout=30,
+        serving_timeout=5,
         tcp_buffer=1024,
         tcp_timeout=1,
         udp_payload=512,

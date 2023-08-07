@@ -277,3 +277,59 @@ async def test_process(ouija_test):
     )
     await ouija_test.process(data=packet.binary(fernet=ouija_test.tuning.fernet))
     ouija_test.process_packet.assert_awaited()
+
+
+@pytest.mark.asyncio
+async def test_resend_packets_ok(ouija_test):
+    ouija_test.close = AsyncMock()
+    ouija_test.send = AsyncMock()
+    ouija_test.send_close = AsyncMock()
+    await ouija_test.enqueue_send(data=b'test data', drain=True)
+    await ouija_test.resend_packets()
+    ouija_test.close.assert_awaited()
+    ouija_test.send.assert_awaited()
+    ouija_test.send_close.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_resend_packets_empty(ouija_test):
+    ouija_test.send_close = AsyncMock()
+    await ouija_test.resend_packets()
+    ouija_test.send_close.assert_awaited()
+
+
+@pytest.mark.asyncio
+async def test_resend(ouija_test):
+    ouija_test.resend_packets = AsyncMock()
+    await ouija_test.resend()
+    ouija_test.resend_packets.assert_awaited()
+
+
+@pytest.mark.asyncio
+async def test_serve_stream(ouija_test):
+    async def resetter():
+        await asyncio.sleep(3)
+        ouija_test.opened.clear()
+    ouija_test.on_serve = AsyncMock(return_value=True)
+    ouija_test.resend = AsyncMock()
+    ouija_test.read = AsyncMock(return_value=b'test data')
+    ouija_test.enqueue_send = AsyncMock()
+    ouija_test.opened.set()
+    asyncio.create_task(resetter())
+    await ouija_test.serve_stream()
+    ouija_test.on_serve.assert_awaited()
+    ouija_test.resend.assert_awaited()
+    ouija_test.read.assert_awaited()
+    ouija_test.enqueue_send.assert_awaited()
+
+
+@pytest.mark.asyncio
+async def test_serve(ouija_test):
+    ouija_test.serve_stream = AsyncMock()
+    await ouija_test.serve()
+    ouija_test.serve_stream.assert_awaited()
+
+
+@pytest.mark.asyncio
+async def test_close(ouija_test):
+    pass

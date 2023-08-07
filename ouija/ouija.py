@@ -203,7 +203,7 @@ class Ouija:
 
                 if delta >= self.tuning.serving_timeout or self.sent_buf[seq].retries >= self.tuning.udp_retries:
                     await self.close()
-                    break
+                    return
 
                 if delta >= self.tuning.udp_timeout:
                     await self.send(data=self.sent_buf[seq].data)
