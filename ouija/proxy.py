@@ -41,14 +41,14 @@ class Proxy(asyncio.DatagramProtocol):
     def datagram_received(self, data, addr) -> None:
         asyncio.create_task(self.datagram_received_async(data=data, addr=addr))
 
-    def error_received(self, exc) -> None:
+    def error_received(self, exc) -> None:  # pragma: no cover
         logger.error(exc)
 
     def connection_lost(self, exc) -> None:
         self.transport.close()
         logger.error(exc)
 
-    async def serve(self) -> None:
+    async def serve(self) -> None:  # pragma: no cover
         loop = asyncio.get_event_loop()
         await loop.create_datagram_endpoint(lambda: self, local_addr=(self.proxy_host, self.proxy_port))
 

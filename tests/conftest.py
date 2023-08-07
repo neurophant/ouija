@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock
 import pytest
 from cryptography.fernet import Fernet
 
-from ouija import Telemetry, Tuning, Ouija, Relay, Link, Interface
+from ouija import Telemetry, Tuning, Ouija, Relay, Link, Interface, Proxy
 
 
 @pytest.fixture
@@ -109,3 +109,13 @@ def interface_test(telemetry_test, tuning_test):
         proxy_host='127.0.0.1',
         proxy_port=50000,
     )
+
+
+@pytest.fixture
+def proxy_test(telemetry_test, tuning_test):
+    return Proxy(
+        telemetry=telemetry_test,
+        tuning=tuning_test,
+        proxy_host='0.0.0.0',
+        proxy_port=50000,
+)
