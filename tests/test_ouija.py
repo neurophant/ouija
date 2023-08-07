@@ -266,3 +266,14 @@ async def test_process_packet_close(ouija_test):
     )
     await ouija_test.process_packet(data=packet.binary(fernet=ouija_test.tuning.fernet))
     ouija_test.send_ack_close.assert_awaited()
+
+
+@pytest.mark.asyncio
+async def test_process(ouija_test):
+    ouija_test.process_packet = AsyncMock()
+    packet = Packet(
+        phase=Phase.CLOSE,
+        ack=False,
+    )
+    await ouija_test.process(data=packet.binary(fernet=ouija_test.tuning.fernet))
+    ouija_test.process_packet.assert_awaited()
