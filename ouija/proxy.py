@@ -34,12 +34,12 @@ class Proxy(asyncio.DatagramProtocol):
     def connection_made(self, transport) -> None:
         self.transport = transport
 
-    async def _datagram_received_async(self, *, data, addr) -> None:
+    async def datagram_received_async(self, *, data, addr) -> None:
         link = self.links.get(addr, Link(telemetry=self.telemetry, proxy=self, addr=addr, tuning=self.tuning))
         await link.process(data=data)
 
     def datagram_received(self, data, addr) -> None:
-        asyncio.create_task(self._datagram_received_async(data=data, addr=addr))
+        asyncio.create_task(self.datagram_received_async(data=data, addr=addr))
 
     def error_received(self, exc) -> None:
         logger.error(exc)

@@ -51,14 +51,14 @@ class Relay(Ouija, asyncio.DatagramProtocol):
     def connection_made(self, transport) -> None:
         self.transport = transport
 
-    async def _datagram_received_async(self, *, data, addr) -> None:
+    async def datagram_received_async(self, *, data, addr) -> None:
         await self.process(data=data)
 
     def datagram_received(self, data, addr) -> None:
-        asyncio.create_task(self._datagram_received_async(data=data, addr=addr))
+        asyncio.create_task(self.datagram_received_async(data=data, addr=addr))
 
     def error_received(self, exc) -> None:
-        logger.error(exc)
+        logger.error(exc)   # pragma: no cover
 
     def connection_lost(self, exc) -> None:
         asyncio.create_task(self.close())

@@ -1,10 +1,11 @@
 import asyncio
 from typing import Optional
+from unittest.mock import AsyncMock
 
 import pytest
 from cryptography.fernet import Fernet
 
-from ouija import Telemetry, Tuning, Ouija
+from ouija import Telemetry, Tuning, Ouija, Relay
 
 
 @pytest.fixture
@@ -71,6 +72,20 @@ def ouija_test(telemetry_test, tuning_test):
     return OuijaTest(
         telemetry=telemetry_test,
         tuning=tuning_test,
+        remote_host='example.com',
+        remote_port=443,
+    )
+
+
+@pytest.fixture
+def relay_test(telemetry_test, tuning_test):
+    return Relay(
+        telemetry=telemetry_test,
+        tuning=tuning_test,
+        reader=AsyncMock(),
+        writer=AsyncMock(),
+        proxy_host='127.0.0.1',
+        proxy_port=50000,
         remote_host='example.com',
         remote_port=443,
     )
