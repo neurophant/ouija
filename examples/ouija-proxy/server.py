@@ -1,7 +1,15 @@
 import asyncio
+import logging
 
 import settings
 from ouija import Proxy, Telemetry, Tuning
+
+
+logging.basicConfig(
+    format='%(asctime)s,%(msecs)03d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s',
+    datefmt='%Y-%m-%d:%H:%M:%S',
+    level=logging.CRITICAL,
+)
 
 
 async def main() -> None:
@@ -23,7 +31,7 @@ async def main() -> None:
         proxy_port=settings.PROXY_PORT,
     )
     asyncio.create_task(proxy.cleanup())
-    asyncio.create_task(proxy.monitor())
+    #asyncio.create_task(proxy.monitor())
     await proxy.serve()
 
 

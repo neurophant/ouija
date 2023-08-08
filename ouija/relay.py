@@ -1,18 +1,10 @@
 import asyncio
-import logging
 
 from .telemetry import Telemetry
 from .tuning import Tuning
 from .ouija import Ouija
 from .packet import Packet
-
-
-logging.basicConfig(
-    format='%(asctime)s,%(msecs)03d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s',
-    datefmt='%Y-%m-%d:%H:%M:%S',
-    level=logging.ERROR,
-)
-logger = logging.getLogger(__name__)
+from .log import logger
 
 
 class Relay(Ouija, asyncio.DatagramProtocol):
@@ -63,7 +55,7 @@ class Relay(Ouija, asyncio.DatagramProtocol):
     def connection_lost(self, exc) -> None:
         asyncio.create_task(self.close())
 
-    async def sendto(self, *, data: bytes) -> None:
+    async def on_send(self, *, data: bytes) -> None:
         self.transport.sendto(data)
 
     async def on_open(self, *, packet: Packet) -> bool:

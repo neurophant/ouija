@@ -1,19 +1,11 @@
 import asyncio
 import os
 from typing import Dict, Tuple
-import logging
 
 from .telemetry import Telemetry
 from .tuning import Tuning
 from .link import Link
-
-
-logging.basicConfig(
-    format='%(asctime)s,%(msecs)03d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s',
-    datefmt='%Y-%m-%d:%H:%M:%S',
-    level=logging.ERROR,
-)
-logger = logging.getLogger(__name__)
+from .log import logger
 
 
 class Proxy(asyncio.DatagramProtocol):

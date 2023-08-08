@@ -1,5 +1,4 @@
 import asyncio
-import logging
 import os
 from typing import Dict
 
@@ -7,14 +6,7 @@ from .tuning import Tuning
 from .relay import Relay
 from .telemetry import Telemetry
 from .rawparser import RawParser
-
-
-logging.basicConfig(
-    format='%(asctime)s,%(msecs)03d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s',
-    datefmt='%Y-%m-%d:%H:%M:%S',
-    level=logging.ERROR,
-)
-logger = logging.getLogger(__name__)
+from .log import logger
 
 
 class Interface:

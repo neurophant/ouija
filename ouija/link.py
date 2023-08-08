@@ -1,6 +1,5 @@
 import asyncio
 from typing import Tuple
-import logging
 
 from .packet import Packet
 from .telemetry import Telemetry
@@ -10,14 +9,6 @@ from .ouija import Ouija
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:   # pragma: no cover
     from proxy import Proxy
-
-
-logging.basicConfig(
-    format='%(asctime)s,%(msecs)03d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s',
-    datefmt='%Y-%m-%d:%H:%M:%S',
-    level=logging.ERROR,
-)
-logger = logging.getLogger(__name__)
 
 
 class Link(Ouija):
@@ -41,10 +32,13 @@ class Link(Ouija):
         self.recv_seq = 0
         self.write_closed = asyncio.Event()
 
-    async def sendto(self, *, data: bytes) -> None:
+    async def on_send(self, *, data: bytes) -> None:
         self.proxy.transport.sendto(data, self.addr)
 
     async def on_open(self, *, packet: Packet) -> bool:
+        if not packet.host or not packet.port:
+            return False
+
         if self.opened.is_set():
             await self.send_ack_open()
             return False

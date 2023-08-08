@@ -1,19 +1,11 @@
 import asyncio
-import logging
 import time
 from typing import Optional, Dict
 
 from .telemetry import Telemetry
 from .tuning import Tuning
 from .packet import Phase, Packet, Sent, Received
-
-
-logging.basicConfig(
-    format='%(asctime)s,%(msecs)03d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s',
-    datefmt='%Y-%m-%d:%H:%M:%S',
-    level=logging.ERROR,
-)
-logger = logging.getLogger(__name__)
+from .log import logger
 
 
 class Ouija:
@@ -31,11 +23,11 @@ class Ouija:
     recv_seq: int
     write_closed: asyncio.Event
 
-    async def sendto(self, *, data: bytes) -> None:
+    async def on_send(self, *, data: bytes) -> None:
         raise NotImplementedError
 
     async def send(self, *, data: bytes) -> None:
-        await self.sendto(data=data)
+        await self.on_send(data=data)
         self.telemetry.send(data=data)
 
     async def send_packet(self, *, packet: Packet) -> bytes:
@@ -63,9 +55,9 @@ class Ouija:
         if drain:
             await self.writer.drain()
 
-    async def recv(self, *, seq: int, data: bytes, drain: bool) -> None:
-        if seq >= self.recv_seq:
-            self.recv_buf[seq] = Received(data=data, drain=drain)
+    async def recv(self, *, packet: Packet) -> None:
+        if packet.seq >= self.recv_seq:
+            self.recv_buf[packet.seq] = Received(data=packet.data, drain=packet.drain)
 
         for seq in sorted(self.recv_buf.keys()):
             if seq != self.recv_seq:
@@ -75,7 +67,7 @@ class Ouija:
             await self.write(data=recv.data, drain=recv.drain)
             self.recv_seq += 1
 
-        await self.send_ack_data(seq=seq)
+        await self.send_ack_data(seq=packet.seq)
 
         if len(self.recv_buf) >= self.tuning.udp_capacity:
             await self.close()
@@ -153,7 +145,7 @@ class Ouija:
     async def on_open(self, packet: Packet) -> bool:
         raise NotImplementedError
 
-    async def process_packet(self, *, data: bytes) -> None:
+    async def process_wrapped(self, *, data: bytes) -> None:
         self.telemetry.recv(data=data)
         packet = Packet.packet(data=data, fernet=self.tuning.fernet)
 
@@ -173,7 +165,7 @@ class Ouija:
                 if packet.ack:
                     await self.dequeue_send(seq=packet.seq)
                 else:
-                    await self.recv(seq=packet.seq, data=packet.data, drain=packet.drain)
+                    await self.recv(packet=packet)
             case Phase.CLOSE:
                 if packet.ack:
                     self.read_closed.set()
@@ -185,7 +177,7 @@ class Ouija:
 
     async def process(self, *, data: bytes) -> None:
         try:
-            await self.process_packet(data=data)
+            await self.process_wrapped(data=data)
         except ConnectionError as e:
             logger.error(e)
             self.telemetry.connection_error()
@@ -194,7 +186,7 @@ class Ouija:
             logger.error(e)
             self.telemetry.processing_error()
 
-    async def resend_packets(self) -> None:
+    async def resend_wrapped(self) -> None:
         while self.opened.is_set() or self.sent_buf:
             await asyncio.sleep(self.tuning.udp_timeout)
 
@@ -218,7 +210,7 @@ class Ouija:
 
     async def resend(self) -> None:
         try:
-            await asyncio.wait_for(self.resend_packets(), self.tuning.serving_timeout)
+            await asyncio.wait_for(self.resend_wrapped(), self.tuning.serving_timeout)
         except asyncio.TimeoutError:
             self.telemetry.timeout_error()
         except Exception as e:
@@ -230,7 +222,7 @@ class Ouija:
     async def on_serve(self) -> bool:
         raise NotImplementedError
 
-    async def serve_stream(self) -> None:
+    async def serve_wrapped(self) -> None:
         if not await self.on_serve():
             return
 
@@ -253,7 +245,7 @@ class Ouija:
 
     async def serve(self) -> None:
         try:
-            await asyncio.wait_for(self.serve_stream(), self.tuning.serving_timeout)
+            await asyncio.wait_for(self.serve_wrapped(), self.tuning.serving_timeout)
         except asyncio.TimeoutError:
             self.telemetry.timeout_error()
         except ConnectionError as e:
