@@ -1,7 +1,11 @@
+import sys
+sys.path.append('../')
+
 import asyncio
 import logging
 
-import settings
+from cryptography.fernet import Fernet
+
 from ouija import Interface, Tuning, Telemetry
 
 
@@ -14,24 +18,28 @@ logging.basicConfig(
 
 async def main() -> None:
     tuning = Tuning(
-        fernet=settings.fernet,
-        token=settings.TOKEN,
-        serving_timeout=settings.SERVING_TIMEOUT,
-        tcp_buffer=settings.TCP_BUFFER,
-        tcp_timeout=settings.TCP_TIMEOUT,
-        udp_payload=settings.UDP_PAYLOAD,
-        udp_timeout=settings.UDP_TIMEOUT,
-        udp_retries=settings.UDP_RETRIES,
-        udp_capacity=settings.UDP_CAPACITY,
+        fernet=Fernet('bdDmN4VexpDvTrs6gw8xTzaFvIBobFg1Cx2McFB1RmI='),
+        token='secret',
+        serving_timeout=30,
+        tcp_buffer=2048,
+        tcp_timeout=1,
+        udp_payload=1024,
+        udp_timeout=3,
+        udp_retries=5,
+        udp_capacity=1000,
     )
     interface = Interface(
         telemetry=Telemetry(),
         tuning=tuning,
-        proxy_host=settings.PROXY_HOST,
-        proxy_port=settings.PROXY_PORT,
+        proxy_host='127.0.0.1',
+        proxy_port=50000,
     )
     asyncio.create_task(interface.debug())
-    server = await asyncio.start_server(interface.serve, settings.RELAY_HOST, settings.RELAY_PORT)
+    server = await asyncio.start_server(
+        interface.serve,
+        '127.0.0.1',
+        9000,
+    )
     async with server:
         await server.serve_forever()
 

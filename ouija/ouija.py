@@ -24,6 +24,10 @@ class Ouija:
     write_closed: asyncio.Event
 
     async def on_send(self, *, data: bytes) -> None:
+        """Hook - send binary data via UDP
+
+        :param data: binary data
+        :returns: None"""
         raise NotImplementedError
 
     async def send(self, *, data: bytes) -> None:
@@ -143,6 +147,10 @@ class Ouija:
         await self.send_packet(packet=close_ack_packet)
 
     async def on_open(self, packet: Packet) -> bool:
+        """Hook - process phase open packet
+
+        :param packet: Packet
+        :returns: True on opened link, False on fail"""
         raise NotImplementedError
 
     async def process_wrapped(self, *, data: bytes) -> None:
@@ -176,6 +184,10 @@ class Ouija:
                 self.telemetry.type_error()
 
     async def process(self, *, data: bytes) -> None:
+        """Decode and process packet
+
+        :param data: binary packet
+        :returns: None"""
         try:
             await self.process_wrapped(data=data)
         except ConnectionError as e:
@@ -220,6 +232,9 @@ class Ouija:
             await self.close()
 
     async def on_serve(self) -> bool:
+        """Hook - executed before serving
+
+        :returns: True - start serving, False - return"""
         raise NotImplementedError
 
     async def serve_wrapped(self) -> None:
@@ -244,6 +259,9 @@ class Ouija:
                 )
 
     async def serve(self) -> None:
+        """Serve TCP stream with timeout
+
+        :returns: None"""
         try:
             await asyncio.wait_for(self.serve_wrapped(), self.tuning.serving_timeout)
         except TimeoutError:
@@ -256,6 +274,9 @@ class Ouija:
             self.telemetry.serving_error()
 
     async def on_close(self) -> None:
+        """Hook - executed on close
+
+        :returns: None"""
         raise NotImplementedError
 
     async def close(self) -> None:

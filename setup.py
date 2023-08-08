@@ -10,7 +10,7 @@ with open(path.join(here, 'README.rst'), encoding='utf-8') as f:
 
 setup(
     name='ouija',
-    version='0.3.0',
+    version='1.0.0',
     description='Python library for building and accessing UDP-relayed TCP proxies',
     long_description=long_description,
     url='https://github.com/neurophant/ouija/',
@@ -18,12 +18,17 @@ setup(
     author_email='smolin.anton@gmail.com',
     license='MIT',
     classifiers=[
-        'Development Status :: 3 - Alpha',
+        'Development Status :: 5 - Production/Stable',
+        'Framework :: AsyncIO',
         'Intended Audience :: Developers',
+        'Intended Audience :: Information Technology',
+        'Intended Audience :: System Administrators',
         'License :: OSI Approved :: MIT License',
         'Programming Language :: Python :: 3.11',
+        'Topic :: Internet :: Proxy Servers',
+        'Topic :: Software Development :: Libraries',
     ],
-    keywords='async https tcp udp proxy relay',
+    keywords='asyncio https tcp udp proxy relay network encrypted security censorship',
     packages=['ouija'],
     install_requires=['cryptography>=41.0.2', 'pbjson>=1.18.0'],
 )
