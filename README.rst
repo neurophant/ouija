@@ -5,7 +5,7 @@ Python library for building and accessing UDP-relayed TCP proxies
 
 |pypi|
 
-.. |pypi| image:: https://badge.fury.io/py/ouija.svg
+.. |pypi| image:: https://badge.fury.io/py/ouija@2x.png
     :target: https://badge.fury.io/py/ouija
     :alt: pypi version
 
