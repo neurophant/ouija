@@ -8,15 +8,15 @@ from ouija import Packet, Phase
 
 @pytest.mark.asyncio
 @pytest.mark.xfail(raises=NotImplementedError)
-async def test_sendto(ouija_test, data_test):
-    await ouija_test.sendto(data=data_test)
+async def test_on_send(ouija_test, data_test):
+    await ouija_test.on_send(data=data_test)
 
 
 @pytest.mark.asyncio
 async def test_send(ouija_test, data_test):
-    ouija_test.sendto = AsyncMock()
+    ouija_test.on_send = AsyncMock()
     await ouija_test.send(data=data_test)
-    ouija_test.sendto.assert_awaited_with(data=data_test)
+    ouija_test.on_send.assert_awaited_with(data=data_test)
 
 
 @pytest.mark.asyncio
@@ -74,9 +74,18 @@ async def test_write_drain(ouija_test, data_test):
 async def test_recv(ouija_test, data_test):
     ouija_test.write = AsyncMock()
     ouija_test.send_ack_data = AsyncMock()
-    await ouija_test.recv(seq=1, data=data_test, drain=False)
-    await ouija_test.recv(seq=2, data=data_test, drain=False)
-    await ouija_test.recv(seq=0, data=data_test, drain=False)
+    packet = Packet(
+        phase=Phase.DATA,
+        ack=False,
+        seq=1,
+        data=data_test,
+        drain=False,
+    )
+    await ouija_test.recv(packet=packet)
+    packet.seq = 2
+    await ouija_test.recv(packet=packet)
+    packet.seq = 0
+    await ouija_test.recv(packet=packet)
     ouija_test.write.assert_awaited()
     ouija_test.send_ack_data.assert_awaited()
 
@@ -87,8 +96,16 @@ async def test_recv_overload(ouija_test, data_test):
     ouija_test.send_ack_data = AsyncMock()
     ouija_test.close = AsyncMock()
     ouija_test.tuning.udp_capacity = 1
-    await ouija_test.recv(seq=1, data=data_test, drain=False)
-    await ouija_test.recv(seq=2, data=data_test, drain=False)
+    packet = Packet(
+        phase=Phase.DATA,
+        ack=False,
+        seq=1,
+        data=data_test,
+        drain=False,
+    )
+    await ouija_test.recv(packet=packet)
+    packet.seq = 2
+    await ouija_test.recv(packet=packet)
     ouija_test.close.assert_awaited()
 
 
@@ -186,7 +203,7 @@ async def test_send_ack_close(ouija_test):
 
 
 @pytest.mark.asyncio
-async def test_process_packet_open(ouija_test, token_test):
+async def test_process_wrapped_open(ouija_test, token_test):
     ouija_test.check_token = AsyncMock(return_value=True)
     ouija_test.on_open = AsyncMock(return_value=True)
     packet = Packet(
@@ -196,13 +213,13 @@ async def test_process_packet_open(ouija_test, token_test):
         host='example.com',
         port=443,
     )
-    await ouija_test.process_packet(data=packet.binary(fernet=ouija_test.tuning.fernet))
+    await ouija_test.process_wrapped(data=packet.binary(fernet=ouija_test.tuning.fernet))
     ouija_test.check_token.assert_awaited()
     ouija_test.on_open.assert_awaited()
 
 
 @pytest.mark.asyncio
-async def test_process_packet_open_check_token_false(ouija_test, token_test):
+async def test_process_wrapped_open_check_token_false(ouija_test, token_test):
     ouija_test.check_token = AsyncMock(return_value=False)
     packet = Packet(
         phase=Phase.OPEN,
@@ -211,12 +228,12 @@ async def test_process_packet_open_check_token_false(ouija_test, token_test):
         host='example.com',
         port=443,
     )
-    await ouija_test.process_packet(data=packet.binary(fernet=ouija_test.tuning.fernet))
+    await ouija_test.process_wrapped(data=packet.binary(fernet=ouija_test.tuning.fernet))
     ouija_test.check_token.assert_awaited()
 
 
 @pytest.mark.asyncio
-async def test_process_packet_open_on_open_false(ouija_test, token_test):
+async def test_process_wrapped_open_on_open_false(ouija_test, token_test):
     ouija_test.on_open = AsyncMock(return_value=False)
     packet = Packet(
         phase=Phase.OPEN,
@@ -225,12 +242,12 @@ async def test_process_packet_open_on_open_false(ouija_test, token_test):
         host='example.com',
         port=443,
     )
-    await ouija_test.process_packet(data=packet.binary(fernet=ouija_test.tuning.fernet))
+    await ouija_test.process_wrapped(data=packet.binary(fernet=ouija_test.tuning.fernet))
     ouija_test.on_open.assert_awaited()
 
 
 @pytest.mark.asyncio
-async def test_process_packet_data_ack(ouija_test):
+async def test_process_wrapped_data_ack(ouija_test):
     ouija_test.opened.set()
     ouija_test.dequeue_send = AsyncMock()
     packet = Packet(
@@ -238,12 +255,12 @@ async def test_process_packet_data_ack(ouija_test):
         ack=True,
         seq=0,
     )
-    await ouija_test.process_packet(data=packet.binary(fernet=ouija_test.tuning.fernet))
+    await ouija_test.process_wrapped(data=packet.binary(fernet=ouija_test.tuning.fernet))
     ouija_test.dequeue_send.assert_awaited()
 
 
 @pytest.mark.asyncio
-async def test_process_packet_data(ouija_test, data_test):
+async def test_process_wrapped_data(ouija_test, data_test):
     ouija_test.opened.set()
     ouija_test.recv = AsyncMock()
     packet = Packet(
@@ -253,12 +270,12 @@ async def test_process_packet_data(ouija_test, data_test):
         data=data_test,
         drain=False,
     )
-    await ouija_test.process_packet(data=packet.binary(fernet=ouija_test.tuning.fernet))
+    await ouija_test.process_wrapped(data=packet.binary(fernet=ouija_test.tuning.fernet))
     ouija_test.recv.assert_awaited()
 
 
 @pytest.mark.asyncio
-async def test_process_packet_data_not_opened(ouija_test, data_test):
+async def test_process_wrapped_data_not_opened(ouija_test, data_test):
     ouija_test.dequeue_send = AsyncMock()
     ouija_test.recv = AsyncMock()
     packet = Packet(
@@ -268,117 +285,117 @@ async def test_process_packet_data_not_opened(ouija_test, data_test):
         data=data_test,
         drain=False,
     )
-    await ouija_test.process_packet(data=packet.binary(fernet=ouija_test.tuning.fernet))
+    await ouija_test.process_wrapped(data=packet.binary(fernet=ouija_test.tuning.fernet))
     ouija_test.dequeue_send.assert_not_awaited()
     ouija_test.recv.assert_not_awaited()
 
 
 @pytest.mark.asyncio
-async def test_process_packet_close_ack(ouija_test):
+async def test_process_wrapped_close_ack(ouija_test):
     packet = Packet(
         phase=Phase.CLOSE,
         ack=True,
     )
-    await ouija_test.process_packet(data=packet.binary(fernet=ouija_test.tuning.fernet))
+    await ouija_test.process_wrapped(data=packet.binary(fernet=ouija_test.tuning.fernet))
     assert ouija_test.read_closed.is_set()
 
 
 @pytest.mark.asyncio
-async def test_process_packet_close(ouija_test):
+async def test_process_wrapped_close(ouija_test):
     ouija_test.send_ack_close = AsyncMock()
     packet = Packet(
         phase=Phase.CLOSE,
         ack=False,
     )
-    await ouija_test.process_packet(data=packet.binary(fernet=ouija_test.tuning.fernet))
+    await ouija_test.process_wrapped(data=packet.binary(fernet=ouija_test.tuning.fernet))
     ouija_test.send_ack_close.assert_awaited()
 
 
 @pytest.mark.asyncio
 async def test_process(ouija_test):
-    ouija_test.process_packet = AsyncMock()
+    ouija_test.process_wrapped = AsyncMock()
     packet = Packet(
         phase=Phase.CLOSE,
         ack=False,
     )
     await ouija_test.process(data=packet.binary(fernet=ouija_test.tuning.fernet))
-    ouija_test.process_packet.assert_awaited()
+    ouija_test.process_wrapped.assert_awaited()
 
 
 @pytest.mark.asyncio
 @pytest.mark.xfail(raises=ConnectionError)
 async def test_process_connectionerror(ouija_test):
-    ouija_test.process_packet = AsyncMock()
-    ouija_test.process_packet.side_effect = ConnectionError()
+    ouija_test.process_wrapped = AsyncMock()
+    ouija_test.process_wrapped.side_effect = ConnectionError()
     packet = Packet(
         phase=Phase.CLOSE,
         ack=False,
     )
     await ouija_test.process(data=packet.binary(fernet=ouija_test.tuning.fernet))
-    ouija_test.process_packet.assert_awaited()
+    ouija_test.process_wrapped.assert_awaited()
 
 
 @pytest.mark.asyncio
 @pytest.mark.xfail(raises=Exception)
 async def test_process_exception(ouija_test):
-    ouija_test.process_packet = AsyncMock()
-    ouija_test.process_packet.side_effect = Exception()
+    ouija_test.process_wrapped = AsyncMock()
+    ouija_test.process_wrapped.side_effect = Exception()
     ouija_test.close = AsyncMock()
     packet = Packet(
         phase=Phase.CLOSE,
         ack=False,
     )
     await ouija_test.process(data=packet.binary(fernet=ouija_test.tuning.fernet))
-    ouija_test.process_packet.assert_awaited()
+    ouija_test.process_wrapped.assert_awaited()
     ouija_test.close.assert_awaited()
 
 
 @pytest.mark.asyncio
-async def test_resend_packets(ouija_test, data_test):
+async def test_resend_wrapped(ouija_test, data_test):
     ouija_test.close = AsyncMock()
     ouija_test.send = AsyncMock()
     ouija_test.send_close = AsyncMock()
     await ouija_test.enqueue_send(data=data_test, drain=True)
-    await ouija_test.resend_packets()
+    await ouija_test.resend_wrapped()
     ouija_test.close.assert_awaited()
     ouija_test.send.assert_awaited()
     ouija_test.send_close.assert_not_awaited()
 
 
 @pytest.mark.asyncio
-async def test_resend_packets_empty(ouija_test):
+async def test_resend_wrapped_empty(ouija_test):
     ouija_test.send_close = AsyncMock()
-    await ouija_test.resend_packets()
+    await ouija_test.resend_wrapped()
     ouija_test.send_close.assert_awaited()
 
 
 @pytest.mark.asyncio
 async def test_resend(ouija_test):
-    ouija_test.resend_packets = AsyncMock()
+    ouija_test.resend_wrapped = AsyncMock()
     ouija_test.close = AsyncMock()
     await ouija_test.resend()
-    ouija_test.resend_packets.assert_awaited()
+    ouija_test.resend_wrapped.assert_awaited()
     ouija_test.close.assert_awaited()
 
 
 @pytest.mark.asyncio
 @pytest.mark.xfail(raises=TimeoutError)
 async def test_resend_timeouterror(ouija_test):
-    ouija_test.resend_packets = AsyncMock()
-    ouija_test.resend_packets.side_effect = TimeoutError()
+    ouija_test.resend_wrapped = AsyncMock()
+    ouija_test.resend_wrapped.side_effect = TimeoutError()
     ouija_test.close = AsyncMock()
     await ouija_test.resend()
-    ouija_test.resend_packets.assert_awaited()
+    ouija_test.resend_wrapped.assert_awaited()
     ouija_test.close.assert_awaited()
 
 
 @pytest.mark.asyncio
 @pytest.mark.xfail(raises=Exception)
 async def test_resend_exception(ouija_test):
-    ouija_test.resend_packets = AsyncMock()
-    ouija_test.resend_packets.side_effect = Exception()
+    ouija_test.resend_wrapped = AsyncMock()
+    ouija_test.resend_wrapped.side_effect = Exception()
     await ouija_test.resend()
-    ouija_test.resend_packets.assert_awaited()
+    ouija_test.resend_wrapped.assert_awaited()
     ouija_test.close.assert_awaited()
 
 
@@ -389,7 +406,7 @@ async def test_on_serve(ouija_test):
 
 
 @pytest.mark.asyncio
-async def test_serve_stream(ouija_test, data_test):
+async def test_serve_wrapped(ouija_test, data_test):
     async def resetter():
         await asyncio.sleep(3)
         ouija_test.opened.clear()
@@ -399,7 +416,7 @@ async def test_serve_stream(ouija_test, data_test):
     ouija_test.enqueue_send = AsyncMock()
     ouija_test.opened.set()
     asyncio.create_task(resetter())
-    await ouija_test.serve_stream()
+    await ouija_test.serve_wrapped()
     ouija_test.on_serve.assert_awaited()
     ouija_test.resend.assert_awaited()
     ouija_test.read.assert_awaited()
@@ -407,7 +424,7 @@ async def test_serve_stream(ouija_test, data_test):
 
 
 @pytest.mark.asyncio
-async def test_serve_stream_on_serve_false(ouija_test, data_test):
+async def test_serve_wrapped_on_serve_false(ouija_test, data_test):
     async def resetter():
         await asyncio.sleep(3)
         ouija_test.opened.clear()
@@ -417,7 +434,7 @@ async def test_serve_stream_on_serve_false(ouija_test, data_test):
     ouija_test.enqueue_send = AsyncMock()
     ouija_test.opened.set()
     asyncio.create_task(resetter())
-    await ouija_test.serve_stream()
+    await ouija_test.serve_wrapped()
     ouija_test.on_serve.assert_awaited()
     ouija_test.resend.assert_not_awaited()
     ouija_test.read.assert_not_awaited()
@@ -426,7 +443,7 @@ async def test_serve_stream_on_serve_false(ouija_test, data_test):
 
 @pytest.mark.asyncio
 @pytest.mark.xfail(raises=TimeoutError)
-async def test_serve_stream_timeouterror(ouija_test, data_test):
+async def test_serve_wrapped_timeouterror(ouija_test, data_test):
     async def resetter():
         await asyncio.sleep(3)
         ouija_test.opened.clear()
@@ -437,7 +454,7 @@ async def test_serve_stream_timeouterror(ouija_test, data_test):
     ouija_test.enqueue_send = AsyncMock()
     ouija_test.opened.set()
     asyncio.create_task(resetter())
-    await ouija_test.serve_stream()
+    await ouija_test.serve_wrapped()
     ouija_test.on_serve.assert_awaited()
     ouija_test.resend.assert_awaited()
     ouija_test.read.assert_awaited()
@@ -445,7 +462,7 @@ async def test_serve_stream_timeouterror(ouija_test, data_test):
 
 
 @pytest.mark.asyncio
-async def test_serve_stream_empty(ouija_test, data_test):
+async def test_serve_wrapped_empty(ouija_test, data_test):
     async def resetter():
         await asyncio.sleep(3)
         ouija_test.opened.clear()
@@ -455,7 +472,7 @@ async def test_serve_stream_empty(ouija_test, data_test):
     ouija_test.enqueue_send = AsyncMock()
     ouija_test.opened.set()
     asyncio.create_task(resetter())
-    await ouija_test.serve_stream()
+    await ouija_test.serve_wrapped()
     ouija_test.on_serve.assert_awaited()
     ouija_test.resend.assert_awaited()
     ouija_test.read.assert_awaited()
@@ -464,36 +481,36 @@ async def test_serve_stream_empty(ouija_test, data_test):
 
 @pytest.mark.asyncio
 async def test_serve(ouija_test):
-    ouija_test.serve_stream = AsyncMock()
+    ouija_test.serve_wrapped = AsyncMock()
     await ouija_test.serve()
-    ouija_test.serve_stream.assert_awaited()
+    ouija_test.serve_wrapped.assert_awaited()
 
 
 @pytest.mark.asyncio
 @pytest.mark.xfail(raises=TimeoutError)
 async def test_serve_timeouterror(ouija_test):
-    ouija_test.serve_stream = AsyncMock()
-    ouija_test.serve_stream.side_effect = TimeoutError()
+    ouija_test.serve_wrapped = AsyncMock()
+    ouija_test.serve_wrapped.side_effect = TimeoutError()
     await ouija_test.serve()
-    ouija_test.serve_stream.assert_awaited()
+    ouija_test.serve_wrapped.assert_awaited()
 
 
 @pytest.mark.asyncio
 @pytest.mark.xfail(raises=ConnectionError)
 async def test_serve_connectionerror(ouija_test):
-    ouija_test.serve_stream = AsyncMock()
-    ouija_test.serve_stream.side_effect = ConnectionError()
+    ouija_test.serve_wrapped = AsyncMock()
+    ouija_test.serve_wrapped.side_effect = ConnectionError()
     await ouija_test.serve()
-    ouija_test.serve_stream.assert_awaited()
+    ouija_test.serve_wrapped.assert_awaited()
 
 
 @pytest.mark.asyncio
 @pytest.mark.xfail(raises=Exception)
 async def test_serve_exception(ouija_test):
-    ouija_test.serve_stream = AsyncMock()
-    ouija_test.serve_stream.side_effect = Exception()
+    ouija_test.serve_wrapped = AsyncMock()
+    ouija_test.serve_wrapped.side_effect = Exception()
     await ouija_test.serve()
-    ouija_test.serve_stream.assert_awaited()
+    ouija_test.serve_wrapped.assert_awaited()
 
 
 @pytest.mark.asyncio

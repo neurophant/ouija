@@ -1,6 +1,7 @@
 from unittest.mock import Mock, AsyncMock
 
 import pytest
+from pytest_mock import MockerFixture
 
 
 def test_proxy_connection_made(proxy_test):
@@ -29,3 +30,12 @@ async def test_proxy_connection_lost(proxy_test):
     proxy_test.transport = AsyncMock()
     proxy_test.connection_lost(Exception())
     proxy_test.transport.close.assert_called()
+
+
+@pytest.mark.asyncio
+async def test_proxy_serve(proxy_test, mocker: MockerFixture):
+    mocked_asyncio = mocker.patch('ouija.proxy.asyncio')
+    mocked_loop = AsyncMock()
+    mocked_asyncio.get_event_loop = lambda: mocked_loop
+    await proxy_test.serve()
+    mocked_loop.create_datagram_endpoint.assert_awaited()

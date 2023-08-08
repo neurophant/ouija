@@ -7,8 +7,8 @@ from ouija import Packet, Phase
 
 
 @pytest.mark.asyncio
-async def test_link_sendto(link_test, data_test):
-    await link_test.sendto(data=data_test)
+async def test_link_on_send(link_test, data_test):
+    await link_test.on_send(data=data_test)
     link_test.proxy.transport.sendto.assert_called()
 
 
@@ -32,6 +32,19 @@ async def test_link_on_open(link_test, token_test, mocker: MockerFixture):
     assert link_test.opened.is_set()
     link_test.serve.assert_called()
     link_test.send_ack_open.assert_awaited()
+
+
+@pytest.mark.asyncio
+async def test_link_on_open_empty_remote(link_test, token_test):
+    link_test.opened.set()
+    link_test.send_ack_open = AsyncMock()
+    packet = Packet(
+        phase=Phase.OPEN,
+        ack=False,
+        token=token_test,
+    )
+    assert not await link_test.on_open(packet=packet)
+    link_test.send_ack_open.assert_not_awaited()
 
 
 @pytest.mark.asyncio

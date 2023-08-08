@@ -1,5 +1,4 @@
 import asyncio
-import logging
 import os
 from typing import Dict
 
@@ -7,14 +6,7 @@ from .tuning import Tuning
 from .relay import Relay
 from .telemetry import Telemetry
 from .rawparser import RawParser
-
-
-logging.basicConfig(
-    format='%(asctime)s,%(msecs)03d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s',
-    datefmt='%Y-%m-%d:%H:%M:%S',
-    level=logging.ERROR,
-)
-logger = logging.getLogger(__name__)
+from .log import logger
 
 
 class Interface:
@@ -53,7 +45,7 @@ class Interface:
         )
         await relay.serve()
 
-    async def handle_session(self, *, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
+    async def session_wrapped(self, *, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
         data = await reader.readuntil(b'\r\n\r\n')
         request = RawParser(data=data)
         if request.error:
@@ -68,26 +60,32 @@ class Interface:
         else:
             logger.error(f'{request.method} method is not supported')
 
-    async def session(self, *, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
+    async def session(self, *, index: int, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
         try:
-            await asyncio.wait_for(self.handle_session(reader=reader, writer=writer), self.tuning.serving_timeout)
-        except asyncio.TimeoutError:
-            logger.error('Timeout')
+            await asyncio.wait_for(self.session_wrapped(reader=reader, writer=writer), self.tuning.serving_timeout)
+        except TimeoutError:
+            self.telemetry.timeout_error()
+        except Exception as e:
+            logger.exception(e)
+            self.telemetry.serving_error()
+        finally:
+            _ = self.sessions.pop(index, None)
 
     async def serve(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
-        self.sessions[self.index] = asyncio.create_task(self.session(reader=reader, writer=writer))
+        """Relay TCP server entry point
+
+        :returns: None
+        """
+        self.sessions[self.index] = asyncio.create_task(self.session(index=self.index, reader=reader, writer=writer))
         self.index += 1
 
-    async def cleanup(self) -> None:    # pragma: no cover
-        while True:
-            await asyncio.sleep(1)
-            for index in sorted(self.sessions.keys()):
-                if self.sessions[index].done():
-                    self.sessions.pop(index)
-            self.telemetry.link(links=len(self.sessions))
+    async def debug(self) -> None:    # pragma: no cover
+        """Debug monitor with telemetry output
 
-    async def monitor(self) -> None:    # pragma: no cover
+        :returns: None
+        """
         while True:
             await asyncio.sleep(1)
+            self.telemetry.link(links=len(self.sessions))
             os.system('clear')
             print(self.telemetry)
