@@ -33,9 +33,9 @@ async def test_relay_connection_lost(relay_test):
 
 
 @pytest.mark.asyncio
-async def test_relay_sendto(relay_test, data_test):
+async def test_relay_on_send(relay_test, data_test):
     relay_test.transport = Mock()
-    await relay_test.sendto(data=data_test)
+    await relay_test.on_send(data=data_test)
     relay_test.transport.sendto.assert_called()
 
 

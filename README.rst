@@ -24,7 +24,7 @@ Key entities
 * Tuning - Relay-Proxy interaction settings
 * Interface - HTTPS proxy server interface
 * Relay - HTTPS proxy relay, which communicates with Proxy via encrypted UDP
-* Proxy - UDP server, which gets requests from Relay and sends back responses from target TCP servers
+* Proxy - UDP server, which gets requests from Relay and sends back responses from remote TCP servers
 * Link - Relay link within Proxy
 
 Tuning
