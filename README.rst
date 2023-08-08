@@ -14,7 +14,7 @@ Features
 
 Hides TCP traffic in encrypted UDP traffic between relay and proxy servers
 
-.. image:: https://raw.githubusercontent.com/neurophant/ouija/master/ouija.png
+.. image:: https://raw.githubusercontent.com/neurophant/ouija/1.0.0/ouija.png
     :alt: Sliding from center to edge - searching for maximum entropy difference
     :width: 800
 

@@ -28,7 +28,7 @@ setup(
         'Topic :: Internet :: Proxy Servers',
         'Topic :: Software Development :: Libraries',
     ],
-    keywords='asyncio https tcp udp proxy relay network encrypted security censorship',
+    keywords='asyncio https tcp udp proxy tunnel relay network encrypted security censorship',
     packages=['ouija'],
     install_requires=['cryptography>=41.0.2', 'pbjson>=1.18.0'],
 )
