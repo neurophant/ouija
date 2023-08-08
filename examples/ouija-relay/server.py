@@ -30,8 +30,7 @@ async def main() -> None:
         proxy_host=settings.PROXY_HOST,
         proxy_port=settings.PROXY_PORT,
     )
-    asyncio.create_task(interface.cleanup())
-    #asyncio.create_task(interface.monitor())
+    asyncio.create_task(interface.debug())
     server = await asyncio.start_server(interface.serve, settings.RELAY_HOST, settings.RELAY_PORT)
     async with server:
         await server.serve_forever()

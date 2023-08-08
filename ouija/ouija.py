@@ -40,7 +40,7 @@ class Ouija:
             await self.send_packet(packet=packet)
             try:
                 await asyncio.wait_for(event.wait(), self.tuning.udp_timeout)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 continue
             else:
                 return True
@@ -183,7 +183,7 @@ class Ouija:
             self.telemetry.connection_error()
         except Exception as e:
             await self.close()
-            logger.error(e)
+            logger.exception(e)
             self.telemetry.processing_error()
 
     async def resend_wrapped(self) -> None:
@@ -205,16 +205,16 @@ class Ouija:
 
         try:
             await asyncio.wait_for(self.write_closed.wait(), self.tuning.serving_timeout)
-        except asyncio.TimeoutError:
+        except TimeoutError:
             pass
 
     async def resend(self) -> None:
         try:
             await asyncio.wait_for(self.resend_wrapped(), self.tuning.serving_timeout)
-        except asyncio.TimeoutError:
+        except TimeoutError:
             self.telemetry.timeout_error()
         except Exception as e:
-            logger.error(e)
+            logger.exception(e)
             self.telemetry.resending_error()
         finally:
             await self.close()
@@ -246,13 +246,13 @@ class Ouija:
     async def serve(self) -> None:
         try:
             await asyncio.wait_for(self.serve_wrapped(), self.tuning.serving_timeout)
-        except asyncio.TimeoutError:
+        except TimeoutError:
             self.telemetry.timeout_error()
         except ConnectionError as e:
             logger.error(e)
             self.telemetry.connection_error()
         except Exception as e:
-            logger.error(e)
+            logger.exception(e)
             self.telemetry.serving_error()
 
     async def on_close(self) -> None:
