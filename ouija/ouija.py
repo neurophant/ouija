@@ -181,7 +181,7 @@ class Ouija:
                     await self.send_ack_close()
                     self.write_closed.set()
             case _:     # pragma: no cover
-                self.telemetry.type_error()
+                pass
 
     async def process(self, *, data: bytes) -> None:
         """Decode and process packet
@@ -206,19 +206,11 @@ class Ouija:
                 delta = int(time.time()) - self.sent_buf[seq].timestamp
 
                 if delta >= self.tuning.serving_timeout or self.sent_buf[seq].retries >= self.tuning.udp_retries:
-                    await self.close()
                     return
 
                 if delta >= self.tuning.udp_timeout:
                     await self.send(data=self.sent_buf[seq].data)
                     self.sent_buf[seq].retries += 1
-
-        await self.send_close()
-
-        try:
-            await asyncio.wait_for(self.write_closed.wait(), self.tuning.serving_timeout)
-        except TimeoutError:
-            pass
 
     async def resend(self) -> None:
         try:
@@ -281,11 +273,18 @@ class Ouija:
 
     async def close(self) -> None:
         if self.opened.is_set():
-            self.telemetry.close()
+            self.opened.clear()
 
-        self.opened.clear()
-        self.read_closed.set()
-        self.write_closed.set()
+            await self.send_close()
+            self.read_closed.set()
+
+            try:
+                await asyncio.wait_for(self.write_closed.wait(), self.tuning.serving_timeout)
+            except TimeoutError:
+                pass
+            self.write_closed.set()
+
+            self.telemetry.close()
 
         if isinstance(self.writer, asyncio.StreamWriter) and not self.writer.is_closing():
             self.writer.close()
