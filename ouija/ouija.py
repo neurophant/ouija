@@ -199,7 +199,7 @@ class Ouija:
             self.telemetry.processing_error()
 
     async def resend_wrapped(self) -> None:
-        while self.opened.is_set() or self.sent_buf:
+        while self.opened.is_set():
             await asyncio.sleep(self.tuning.udp_timeout)
 
             for seq in sorted(self.sent_buf.keys()):
