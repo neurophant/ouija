@@ -2,7 +2,7 @@ import asyncio
 import time
 from typing import Optional, Dict
 
-from .exception import OnOpenError, TokenError, BufOverloadError, OnServeError
+from .exception import OnOpenError, TokenError, BufOverloadError, OnServeError, SendRetryError
 from .telemetry import Telemetry
 from .tuning import Tuning
 from .packet import Phase, Packet, Sent, Received
@@ -27,9 +27,9 @@ class Ouija:
 
     async def on_send(self, *, data: bytes) -> None:
         """Hook - send binary data via UDP
-
         :param data: binary data
         :returns: None"""
+
         raise NotImplementedError
 
     async def send(self, *, data: bytes) -> None:
@@ -41,23 +41,24 @@ class Ouija:
         await self.send(data=data)
         return data
 
-    async def send_retry(self, *, packet: Packet, event: asyncio.Event) -> bool:
+    async def send_retry(self, *, packet: Packet, event: asyncio.Event) -> None:
         for _ in range(self.tuning.udp_retries):
             await self.send_packet(packet=packet)
+
             try:
                 await asyncio.wait_for(event.wait(), self.tuning.udp_timeout)
             except TimeoutError:
                 continue
             else:
-                return True
-        else:
-            return False
+                return
+
+        raise SendRetryError
 
     async def on_open(self, packet: Packet) -> None:
         """Hook - process phase open packet, on fail should raise OnOpenError
-
         :param packet: Packet
         :returns: None"""
+
         raise NotImplementedError
 
     async def process_wrapped(self, *, data: bytes) -> None:
@@ -121,9 +122,9 @@ class Ouija:
 
     async def process(self, *, data: bytes) -> None:
         """Decode and process packet
-
         :param data: binary packet
         :returns: None"""
+
         try:
             await self.process_wrapped(data=data)
         except TokenError:
@@ -146,6 +147,7 @@ class Ouija:
     async def resend_wrapped(self) -> None:
         while self.sync.is_set() or self.sent_buf:
             await asyncio.sleep(self.tuning.udp_resend_sleep)
+
             for seq in sorted(self.sent_buf.keys()):
                 delta = int(time.time()) - self.sent_buf[seq].timestamp
 
@@ -155,6 +157,7 @@ class Ouija:
                 if delta >= self.tuning.udp_timeout:
                     await self.send(data=self.sent_buf[seq].data)
                     self.sent_buf[seq].retries += 1
+
         self.sync.clear()
 
     async def resend(self) -> None:
@@ -170,8 +173,8 @@ class Ouija:
 
     async def on_serve(self) -> None:
         """Hook - executed before serving, on fail should raise OnServeError
-
         :returns: None"""
+
         raise NotImplementedError
 
     async def serve_wrapped(self) -> None:
@@ -201,20 +204,20 @@ class Ouija:
                 self.sent_seq += 1
 
                 if len(self.sent_buf) >= self.tuning.udp_capacity:
-                    await self.close()
-                    self.telemetry.send_buf_overload()
-                    return
+                    raise BufOverloadError
 
         self.sync.clear()
 
     async def serve(self) -> None:
         """Serve TCP stream with timeout
-
         :returns: None"""
+
         try:
             await asyncio.wait_for(self.serve_wrapped(), self.tuning.serving_timeout)
         except OnServeError:
             pass
+        except BufOverloadError:
+            self.telemetry.send_buf_overload()
         except TimeoutError:
             self.telemetry.timeout_error()
         except ConnectionError as e:
@@ -230,8 +233,8 @@ class Ouija:
 
     async def on_close(self) -> None:
         """Hook - executed on close
-
         :returns: None"""
+
         raise NotImplementedError
 
     async def close(self) -> None:

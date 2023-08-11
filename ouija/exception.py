@@ -1,3 +1,7 @@
+class SendRetryError(Exception):
+    pass
+
+
 class TokenError(Exception):
     pass
 

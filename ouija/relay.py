@@ -1,7 +1,7 @@
 import asyncio
 from typing import Optional
 
-from .exception import OnOpenError, OnServeError
+from .exception import OnOpenError, OnServeError, SendRetryError
 from .telemetry import Telemetry
 from .tuning import Tuning
 from .ouija import Ouija
@@ -81,7 +81,9 @@ class Relay(Ouija, asyncio.DatagramProtocol):
             host=self.remote_host,
             port=self.remote_port,
         )
-        if not await self.send_retry(packet=open_packet, event=self.opened):
+        try:
+            await self.send_retry(packet=open_packet, event=self.opened)
+        except SendRetryError:
             raise OnServeError
 
     async def on_close(self) -> None:
