@@ -194,12 +194,15 @@ class Ouija:
             logger.error(e)
             self.telemetry.connection_error()
         except Exception as e:
-            await self.close()
             logger.exception(e)
             self.telemetry.processing_error()
+        else:
+            return
+
+        await self.close()
 
     async def resend_wrapped(self) -> None:
-        while self.opened.is_set():
+        while self.opened.is_set() or self.sent_buf:
             await asyncio.sleep(self.tuning.udp_timeout)
 
             for seq in sorted(self.sent_buf.keys()):
@@ -220,8 +223,8 @@ class Ouija:
         except Exception as e:
             logger.exception(e)
             self.telemetry.resending_error()
-        finally:
-            await self.close()
+
+        await self.close()
 
     async def on_serve(self) -> bool:
         """Hook - executed before serving
@@ -264,6 +267,10 @@ class Ouija:
         except Exception as e:
             logger.exception(e)
             self.telemetry.serving_error()
+        else:
+            return
+
+        await self.close()
 
     async def on_close(self) -> None:
         """Hook - executed on close
@@ -273,21 +280,18 @@ class Ouija:
 
     async def close(self) -> None:
         if self.opened.is_set():
-            self.opened.clear()
-
             await self.send_close()
-            self.read_closed.set()
-
             try:
                 await asyncio.wait_for(self.write_closed.wait(), self.tuning.serving_timeout)
             except TimeoutError:
                 pass
-            self.write_closed.set()
 
-            self.telemetry.close()
+        self.opened.clear()
+        self.read_closed.set()
+        self.write_closed.set()
 
-        if isinstance(self.writer, asyncio.StreamWriter) and not self.writer.is_closing():
-            self.writer.close()
-            await self.writer.wait_closed()
+        self.writer.close()
+        await self.writer.wait_closed()
 
         await self.on_close()
+        self.telemetry.close()
