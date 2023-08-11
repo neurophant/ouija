@@ -2,6 +2,7 @@ import asyncio
 import time
 from typing import Optional, Dict
 
+from .exception import OnOpenError, TokenError, BufOverloadError, OnServeError
 from .telemetry import Telemetry
 from .tuning import Tuning
 from .packet import Phase, Packet, Sent, Received
@@ -52,11 +53,11 @@ class Ouija:
         else:
             return False
 
-    async def on_open(self, packet: Packet) -> bool:
-        """Hook - process phase open packet
+    async def on_open(self, packet: Packet) -> None:
+        """Hook - process phase open packet, on fail should raise OnOpenError
 
         :param packet: Packet
-        :returns: True on opened link, False on fail"""
+        :returns: None"""
         raise NotImplementedError
 
     async def process_wrapped(self, *, data: bytes) -> None:
@@ -66,13 +67,9 @@ class Ouija:
         match packet.phase:
             case Phase.OPEN:
                 if packet.token != self.tuning.token:
-                    await self.close()
-                    self.telemetry.token_error()
-                    return
+                    raise TokenError
 
-                if not await self.on_open(packet=packet):
-                    return
-
+                await self.on_open(packet=packet)
                 self.telemetry.open()
             case Phase.DATA:
                 if not self.opened.is_set():
@@ -105,8 +102,7 @@ class Ouija:
                         self.recv_seq += 1
 
                     if len(self.recv_buf) >= self.tuning.udp_capacity:
-                        await self.close()
-                        self.telemetry.recv_buf_overload()
+                        raise BufOverloadError
             case Phase.CLOSE:
                 if not self.opened.is_set():
                     return
@@ -130,6 +126,12 @@ class Ouija:
         :returns: None"""
         try:
             await self.process_wrapped(data=data)
+        except TokenError:
+            self.telemetry.token_error()
+        except OnOpenError:
+            pass
+        except BufOverloadError:
+            self.telemetry.recv_buf_overload()
         except ConnectionError as e:
             logger.error(e)
             self.telemetry.connection_error()
@@ -166,15 +168,14 @@ class Ouija:
 
         await self.close()
 
-    async def on_serve(self) -> bool:
-        """Hook - executed before serving
+    async def on_serve(self) -> None:
+        """Hook - executed before serving, on fail should raise OnServeError
 
-        :returns: True - start serving, False - return"""
+        :returns: None"""
         raise NotImplementedError
 
     async def serve_wrapped(self) -> None:
-        if not await self.on_serve():
-            return
+        await self.on_serve()
 
         self.sync.set()
         asyncio.create_task(self.resend())
@@ -212,6 +213,8 @@ class Ouija:
         :returns: None"""
         try:
             await asyncio.wait_for(self.serve_wrapped(), self.tuning.serving_timeout)
+        except OnServeError:
+            pass
         except TimeoutError:
             self.telemetry.timeout_error()
         except ConnectionError as e:

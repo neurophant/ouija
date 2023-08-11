@@ -1,6 +1,7 @@
 import asyncio
 from typing import Tuple
 
+from .exception import OnOpenError
 from .packet import Packet, Phase
 from .telemetry import Telemetry
 from .tuning import Tuning
@@ -36,9 +37,9 @@ class Link(Ouija):
     async def on_send(self, *, data: bytes) -> None:
         self.proxy.transport.sendto(data, self.addr)
 
-    async def on_open(self, *, packet: Packet) -> bool:
+    async def on_open(self, *, packet: Packet) -> None:
         if not packet.host or not packet.port:
-            return False
+            raise OnOpenError
 
         open_ack_packet = Packet(
             phase=Phase.OPEN,
@@ -53,13 +54,13 @@ class Link(Ouija):
             asyncio.create_task(self.serve())
             self.proxy.links[self.addr] = self
             await self.send_packet(packet=open_ack_packet)
-            return True
+            return
 
         await self.send_packet(packet=open_ack_packet)
-        return False
+        raise OnOpenError
 
-    async def on_serve(self) -> bool:
-        return True     # pragma: no cover
+    async def on_serve(self) -> None:   # pragma: no cover
+        pass
 
     async def on_close(self) -> None:
         self.proxy.links.pop(self.addr, None)

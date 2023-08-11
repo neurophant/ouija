@@ -1,6 +1,7 @@
 import asyncio
 from typing import Optional
 
+from .exception import OnOpenError, OnServeError
 from .telemetry import Telemetry
 from .tuning import Tuning
 from .ouija import Ouija
@@ -61,16 +62,15 @@ class Relay(Ouija, asyncio.DatagramProtocol):
     async def on_send(self, *, data: bytes) -> None:
         self.transport.sendto(data)
 
-    async def on_open(self, *, packet: Packet) -> bool:
+    async def on_open(self, *, packet: Packet) -> None:
         if not packet.ack or self.opened.is_set():
-            return False
+            raise OnOpenError
 
         self.writer.write(data=b'HTTP/1.1 200 Connection Established\r\n\r\n')
         await self.writer.drain()
         self.opened.set()
-        return True
 
-    async def on_serve(self) -> bool:
+    async def on_serve(self) -> None:
         loop = asyncio.get_event_loop()
         await loop.create_datagram_endpoint(lambda: self, remote_addr=(self.proxy_host, self.proxy_port))
 
@@ -82,9 +82,7 @@ class Relay(Ouija, asyncio.DatagramProtocol):
             port=self.remote_port,
         )
         if not await self.send_retry(packet=open_packet, event=self.opened):
-            return False
-
-        return True
+            raise OnServeError
 
     async def on_close(self) -> None:
         if isinstance(self.transport, asyncio.DatagramTransport) and not self.transport.is_closing():
