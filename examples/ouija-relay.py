@@ -27,7 +27,7 @@ async def main() -> None:
         udp_timeout=1.0,
         udp_retries=5,
         udp_capacity=1000,
-        udp_resend_sleep=1.0,
+        udp_resend_sleep=0.1,
     )
     interface = Interface(
         telemetry=Telemetry(),
