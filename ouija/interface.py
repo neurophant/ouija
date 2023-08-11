@@ -73,17 +73,17 @@ class Interface:
 
     async def serve(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
         """Relay TCP server entry point
-
         :returns: None
         """
+
         self.sessions[self.index] = asyncio.create_task(self.session(index=self.index, reader=reader, writer=writer))
         self.index += 1
 
     async def debug(self) -> None:    # pragma: no cover
         """Debug monitor with telemetry output
-
         :returns: None
         """
+
         while True:
             await asyncio.sleep(1)
             self.telemetry.link(links=len(self.sessions))

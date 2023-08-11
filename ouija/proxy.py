@@ -43,17 +43,17 @@ class Proxy(asyncio.DatagramProtocol):
 
     async def serve(self) -> None:
         """Proxy UDP server entry point
-
         :returns: None
         """
+
         loop = asyncio.get_event_loop()
         await loop.create_datagram_endpoint(lambda: self, local_addr=(self.proxy_host, self.proxy_port))
 
     async def debug(self) -> None:    # pragma: no cover
         """Debug monitor with telemetry output
-
         :returns: None
         """
+
         while True:
             await asyncio.sleep(1)
             self.telemetry.link(links=len(self.links))

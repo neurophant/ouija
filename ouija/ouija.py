@@ -149,14 +149,15 @@ class Ouija:
             await asyncio.sleep(self.tuning.udp_resend_sleep)
 
             for seq in sorted(self.sent_buf.keys()):
-                delta = int(time.time()) - self.sent_buf[seq].timestamp
+                sent = self.sent_buf[seq]
+                delta = time.time() - sent.timestamp
 
-                if delta >= self.tuning.serving_timeout or self.sent_buf[seq].retries >= self.tuning.udp_retries:
+                if delta >= self.tuning.serving_timeout or sent.retries >= self.tuning.udp_retries:
                     break
 
-                if delta >= self.tuning.udp_timeout:
-                    await self.send(data=self.sent_buf[seq].data)
-                    self.sent_buf[seq].retries += 1
+                if delta >= self.tuning.udp_timeout * sent.retries:
+                    await self.send(data=sent.data)
+                    sent.retries += 1
 
         self.sync.clear()
 

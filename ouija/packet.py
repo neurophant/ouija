@@ -59,7 +59,7 @@ class Packet:
 @dataclasses.dataclass(kw_only=True)
 class Sent:
     data: bytes
-    timestamp: int = int(time.time())
+    timestamp: float = time.time()
     retries: int = 1
 
 
