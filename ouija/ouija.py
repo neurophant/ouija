@@ -16,6 +16,7 @@ class Ouija:
     remote_host: Optional[str]
     remote_port: Optional[int]
     opened: asyncio.Event
+    sync: asyncio.Event
     sent_buf: Dict[int, Sent]
     sent_seq: int
     read_closed: asyncio.Event
@@ -59,7 +60,7 @@ class Ouija:
         if drain:
             await self.writer.drain()
 
-    async def recv(self, *, packet: Packet) -> None:
+    async def recv_data(self, *, packet: Packet) -> None:
         if packet.seq >= self.recv_seq:
             self.recv_buf[packet.seq] = Received(data=packet.data, drain=packet.drain)
 
@@ -114,14 +115,6 @@ class Ouija:
         )
         await self.send_packet(packet=open_ack_packet)
 
-    async def check_token(self, *, token: str) -> bool:
-        if token == self.tuning.token:
-            return True
-
-        await self.close()
-        self.telemetry.token_error()
-        return False
-
     async def send_ack_data(self, *, seq: int) -> None:
         data_ack_packet = Packet(
             phase=Phase.DATA,
@@ -157,7 +150,9 @@ class Ouija:
 
         match packet.phase:
             case Phase.OPEN:
-                if not await self.check_token(token=packet.token):
+                if packet.token != self.tuning.token:
+                    await self.close()
+                    self.telemetry.token_error()
                     return
 
                 if not await self.on_open(packet=packet):
@@ -165,22 +160,25 @@ class Ouija:
 
                 self.telemetry.open()
             case Phase.DATA:
-                #if not self.opened.is_set() or self.write_closed.is_set():
-                #    return
+                if not self.opened.is_set():
+                    return
 
                 if packet.ack:
                     await self.dequeue_send(seq=packet.seq)
                 else:
                     await self.send_ack_data(seq=packet.seq)
-                    await self.recv(packet=packet)
+                    if self.write_closed.is_set():
+                        return
+                    await self.recv_data(packet=packet)
             case Phase.CLOSE:
+                if not self.opened.is_set():
+                    return
+
                 if packet.ack:
-                    print(id(self), time.time(), 'ack close')
                     self.read_closed.set()
                 else:
-                    print(id(self), time.time(), 'close')
-                    await self.send_ack_close()
                     self.write_closed.set()
+                    await self.send_ack_close()
             case _:     # pragma: no cover
                 pass
 
@@ -203,20 +201,18 @@ class Ouija:
         await self.close()
 
     async def resend_wrapped(self) -> None:
-        while self.opened.is_set() or self.sent_buf:
+        while self.sync.is_set() or self.sent_buf:
             for seq in sorted(self.sent_buf.keys()):
                 delta = int(time.time()) - self.sent_buf[seq].timestamp
 
                 if delta >= self.tuning.serving_timeout or self.sent_buf[seq].retries >= self.tuning.udp_retries:
-                    print(id(self), time.time(), 'resend quit')
                     break
 
                 if delta >= self.tuning.udp_timeout:
                     await self.send(data=self.sent_buf[seq].data)
                     self.sent_buf[seq].retries += 1
             await asyncio.sleep(self.tuning.udp_timeout)
-        self.opened.clear()
-        print(id(self), time.time(), 'resend end')
+        self.sync.clear()
 
     async def resend(self) -> None:
         try:
@@ -239,16 +235,16 @@ class Ouija:
         if not await self.on_serve():
             return
 
+        self.sync.set()
         asyncio.create_task(self.resend())
 
-        while self.opened.is_set():
+        while self.sync.is_set():
             try:
                 data = await asyncio.wait_for(self.read(), self.tuning.tcp_timeout)
             except TimeoutError:
                 continue
 
             if not data:
-                print(id(self), time.time(), 'stream end')
                 break
 
             for idx in range(0, len(data), self.tuning.udp_payload):
@@ -256,8 +252,7 @@ class Ouija:
                     data=data[idx:idx + self.tuning.udp_payload],
                     drain=True if len(data) - idx <= self.tuning.udp_payload else False,
                 )
-
-        self.opened.clear()
+        self.sync.clear()
 
     async def serve(self) -> None:
         """Serve TCP stream with timeout
@@ -308,10 +303,10 @@ class Ouija:
                 pass
 
     async def close(self) -> None:
+        self.sync.clear()
+        await self.read_close()
+        await self.write_close()
         if self.opened.is_set():
             self.opened.clear()
             self.telemetry.close()
-
-        await self.read_close()
-        await self.write_close()
         await self.on_close()

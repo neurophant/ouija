@@ -33,6 +33,7 @@ class Relay(Ouija, asyncio.DatagramProtocol):
         self.remote_host = remote_host
         self.remote_port = remote_port
         self.opened = asyncio.Event()
+        self.sync = asyncio.Event()
         self.sent_buf = dict()
         self.sent_seq = 0
         self.read_closed = asyncio.Event()

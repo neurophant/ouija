@@ -34,7 +34,7 @@ async def main() -> None:
         proxy_host='0.0.0.0',
         proxy_port=50000,
     )
-    #asyncio.create_task(proxy.debug())
+    asyncio.create_task(proxy.debug())
     await proxy.serve()
 
 

@@ -25,6 +25,7 @@ class Link(Ouija):
         self.remote_host = None
         self.remote_port = None
         self.opened = asyncio.Event()
+        self.sync = asyncio.Event()
         self.sent_buf = dict()
         self.sent_seq = 0
         self.read_closed = asyncio.Event()
