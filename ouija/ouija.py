@@ -153,12 +153,12 @@ class Ouija:
                 sent = self.sent_buf[seq]
                 delta = time.time() - sent.timestamp
 
-                if delta >= self.tuning.udp_timeout * self.tuning.udp_retries:
-                    self.sent_buf.pop(seq, None)
-
                 if delta >= self.tuning.udp_timeout * sent.retries:
                     await self.send(data=sent.data)
                     sent.retries += 1
+
+                if delta >= self.tuning.udp_timeout * self.tuning.udp_retries:
+                    self.sent_buf.pop(seq, None)
 
         self.sync.clear()
 

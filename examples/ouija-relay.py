@@ -22,12 +22,12 @@ async def main() -> None:
         token='secret',
         serving_timeout=20.0,
         tcp_buffer=1024,
-        tcp_timeout=0.5,
+        tcp_timeout=1.0,
         udp_payload=1024,
-        udp_timeout=2.0,
+        udp_timeout=1.0,
         udp_retries=5,
         udp_capacity=1000,
-        udp_resend_sleep=0.1,
+        udp_resend_sleep=1.0,
     )
     interface = Interface(
         telemetry=Telemetry(),
