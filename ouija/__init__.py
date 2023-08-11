@@ -1,7 +1,7 @@
 __author__ = 'Anton Smolin'
 __copyright__ = 'Copyright (c) 2023 Anton Smolin'
 __license__ = 'MIT'
-__version__ = '1.0.1'
+__version__ = '1.1.0'
 
 
 from .packet import Phase, Packet

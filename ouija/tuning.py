@@ -7,10 +7,11 @@ from cryptography.fernet import Fernet
 class Tuning:
     fernet: Fernet
     token: str
-    serving_timeout: int
+    serving_timeout: float
     tcp_buffer: int
-    tcp_timeout: int
+    tcp_timeout: float
     udp_payload: int
-    udp_timeout: int
+    udp_timeout: float
     udp_retries: int
     udp_capacity: int
+    udp_resend_sleep: float

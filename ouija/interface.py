@@ -62,7 +62,7 @@ class Interface:
 
     async def session(self, *, index: int, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
         try:
-            await asyncio.wait_for(self.session_wrapped(reader=reader, writer=writer), self.tuning.serving_timeout)
+            await asyncio.wait_for(self.session_wrapped(reader=reader, writer=writer), self.tuning.serving_timeout * 2)
         except TimeoutError:
             self.telemetry.timeout_error()
         except Exception as e:

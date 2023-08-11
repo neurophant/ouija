@@ -202,6 +202,7 @@ class Ouija:
 
     async def resend_wrapped(self) -> None:
         while self.sync.is_set() or self.sent_buf:
+            await asyncio.sleep(self.tuning.udp_resend_sleep)
             for seq in sorted(self.sent_buf.keys()):
                 delta = int(time.time()) - self.sent_buf[seq].timestamp
 
@@ -211,7 +212,6 @@ class Ouija:
                 if delta >= self.tuning.udp_timeout:
                     await self.send(data=self.sent_buf[seq].data)
                     self.sent_buf[seq].retries += 1
-            await asyncio.sleep(self.tuning.udp_timeout)
         self.sync.clear()
 
     async def resend(self) -> None:
