@@ -52,91 +52,6 @@ class Ouija:
         else:
             return False
 
-    async def read(self) -> bytes:
-        return await self.reader.read(self.tuning.tcp_buffer)
-
-    async def write(self, *, data: bytes, drain: bool) -> None:
-        self.writer.write(data)
-        if drain:
-            await self.writer.drain()
-
-    async def recv_data(self, *, packet: Packet) -> None:
-        if packet.seq >= self.recv_seq:
-            self.recv_buf[packet.seq] = Received(data=packet.data, drain=packet.drain)
-
-        for seq in sorted(self.recv_buf.keys()):
-            if seq != self.recv_seq:
-                continue
-
-            recv = self.recv_buf.pop(seq)
-            await self.write(data=recv.data, drain=recv.drain)
-            self.recv_seq += 1
-
-        if len(self.recv_buf) >= self.tuning.udp_capacity:
-            await self.close()
-            self.telemetry.recv_buf_overload()
-
-    async def enqueue_send(self, *, data: bytes, drain: bool) -> None:
-        data_packet = Packet(
-            phase=Phase.DATA,
-            ack=False,
-            seq=self.sent_seq,
-            data=data,
-            drain=drain,
-        )
-        self.sent_buf[self.sent_seq] = Sent(data=await self.send_packet(packet=data_packet))
-        self.sent_seq += 1
-
-        if len(self.sent_buf) >= self.tuning.udp_capacity:
-            await self.close()
-            self.telemetry.send_buf_overload()
-
-    async def dequeue_send(self, *, seq: int) -> None:
-        self.sent_buf.pop(seq, None)
-
-    async def send_open(self) -> bool:
-        open_packet = Packet(
-            phase=Phase.OPEN,
-            ack=False,
-            token=self.tuning.token,
-            host=self.remote_host,
-            port=self.remote_port,
-        )
-        if not await self.send_retry(packet=open_packet, event=self.opened):
-            return False
-
-        return True
-
-    async def send_ack_open(self) -> None:
-        open_ack_packet = Packet(
-            phase=Phase.OPEN,
-            ack=True,
-            token=self.tuning.token,
-        )
-        await self.send_packet(packet=open_ack_packet)
-
-    async def send_ack_data(self, *, seq: int) -> None:
-        data_ack_packet = Packet(
-            phase=Phase.DATA,
-            ack=True,
-            seq=seq,
-        )
-        await self.send_packet(packet=data_ack_packet)
-
-    async def send_close(self) -> None:
-        close_packet = Packet(
-            phase=Phase.CLOSE,
-            ack=False,
-        )
-        await self.send_retry(packet=close_packet, event=self.read_closed)
-
-    async def send_ack_close(self) -> None:
-        close_ack_packet = Packet(
-            phase=Phase.CLOSE,
-            ack=True,
-        )
-        await self.send_packet(packet=close_ack_packet)
-
     async def on_open(self, packet: Packet) -> bool:
         """Hook - process phase open packet
 
@@ -164,12 +79,34 @@ class Ouija:
                     return
 
                 if packet.ack:
-                    await self.dequeue_send(seq=packet.seq)
+                    self.sent_buf.pop(packet.seq, None)
                 else:
-                    await self.send_ack_data(seq=packet.seq)
+                    data_ack_packet = Packet(
+                        phase=Phase.DATA,
+                        ack=True,
+                        seq=packet.seq,
+                    )
+                    await self.send_packet(packet=data_ack_packet)
+
                     if self.write_closed.is_set():
                         return
-                    await self.recv_data(packet=packet)
+
+                    if packet.seq >= self.recv_seq:
+                        self.recv_buf[packet.seq] = Received(data=packet.data, drain=packet.drain)
+
+                    for seq in sorted(self.recv_buf.keys()):
+                        if seq != self.recv_seq:
+                            continue
+
+                        recv = self.recv_buf.pop(seq)
+                        self.writer.write(recv.data)
+                        if recv.drain:
+                            await self.writer.drain()
+                        self.recv_seq += 1
+
+                    if len(self.recv_buf) >= self.tuning.udp_capacity:
+                        await self.close()
+                        self.telemetry.recv_buf_overload()
             case Phase.CLOSE:
                 if not self.opened.is_set():
                     return
@@ -178,7 +115,11 @@ class Ouija:
                     self.read_closed.set()
                 else:
                     self.write_closed.set()
-                    await self.send_ack_close()
+                    close_ack_packet = Packet(
+                        phase=Phase.CLOSE,
+                        ack=True,
+                    )
+                    await self.send_packet(packet=close_ack_packet)
             case _:     # pragma: no cover
                 pass
 
@@ -240,7 +181,7 @@ class Ouija:
 
         while self.sync.is_set():
             try:
-                data = await asyncio.wait_for(self.read(), self.tuning.tcp_timeout)
+                data = await asyncio.wait_for(self.reader.read(self.tuning.tcp_buffer), self.tuning.tcp_timeout)
             except TimeoutError:
                 continue
 
@@ -248,10 +189,21 @@ class Ouija:
                 break
 
             for idx in range(0, len(data), self.tuning.udp_payload):
-                await self.enqueue_send(
+                data_packet = Packet(
+                    phase=Phase.DATA,
+                    ack=False,
+                    seq=self.sent_seq,
                     data=data[idx:idx + self.tuning.udp_payload],
                     drain=True if len(data) - idx <= self.tuning.udp_payload else False,
                 )
+                self.sent_buf[self.sent_seq] = Sent(data=await self.send_packet(packet=data_packet))
+                self.sent_seq += 1
+
+                if len(self.sent_buf) >= self.tuning.udp_capacity:
+                    await self.close()
+                    self.telemetry.send_buf_overload()
+                    return
+
         self.sync.clear()
 
     async def serve(self) -> None:
@@ -279,22 +231,26 @@ class Ouija:
         :returns: None"""
         raise NotImplementedError
 
-    async def read_close(self) -> None:
+    async def close(self) -> None:
+        self.sync.clear()
+
         if not self.read_closed.is_set():
             try:
-                await self.send_close()
+                close_packet = Packet(
+                    phase=Phase.CLOSE,
+                    ack=False,
+                )
+                await self.send_retry(packet=close_packet, event=self.read_closed)
             except Exception:
                 pass
             self.read_closed.set()
 
-    async def write_close(self) -> None:
         if not self.write_closed.is_set():
             try:
                 await asyncio.wait_for(self.write_closed.wait(), self.tuning.serving_timeout)
             except Exception:
                 pass
             self.write_closed.set()
-
         if isinstance(self.writer, asyncio.StreamWriter) and not self.writer.is_closing():
             try:
                 self.writer.close()
@@ -302,10 +258,6 @@ class Ouija:
             except Exception:
                 pass
 
-    async def close(self) -> None:
-        self.sync.clear()
-        await self.read_close()
-        await self.write_close()
         if self.opened.is_set():
             self.opened.clear()
             self.telemetry.close()

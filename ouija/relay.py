@@ -1,14 +1,15 @@
 import asyncio
+from typing import Optional
 
 from .telemetry import Telemetry
 from .tuning import Tuning
 from .ouija import Ouija
-from .packet import Packet
+from .packet import Packet, Phase
 from .log import logger
 
 
 class Relay(Ouija, asyncio.DatagramProtocol):
-    transport: asyncio.DatagramTransport
+    transport: Optional[asyncio.DatagramTransport]
     proxy_host: str
     proxy_port: int
 
@@ -24,6 +25,7 @@ class Relay(Ouija, asyncio.DatagramProtocol):
             remote_host: str,
             remote_port: int,
     ) -> None:
+        self.transport = None
         self.telemetry = telemetry
         self.tuning = tuning
         self.reader = reader
@@ -63,7 +65,8 @@ class Relay(Ouija, asyncio.DatagramProtocol):
         if not packet.ack or self.opened.is_set():
             return False
 
-        await self.write(data=b'HTTP/1.1 200 Connection Established\r\n\r\n', drain=True)
+        self.writer.write(data=b'HTTP/1.1 200 Connection Established\r\n\r\n')
+        await self.writer.drain()
         self.opened.set()
         return True
 
@@ -71,11 +74,18 @@ class Relay(Ouija, asyncio.DatagramProtocol):
         loop = asyncio.get_event_loop()
         await loop.create_datagram_endpoint(lambda: self, remote_addr=(self.proxy_host, self.proxy_port))
 
-        if not await self.send_open():
+        open_packet = Packet(
+            phase=Phase.OPEN,
+            ack=False,
+            token=self.tuning.token,
+            host=self.remote_host,
+            port=self.remote_port,
+        )
+        if not await self.send_retry(packet=open_packet, event=self.opened):
             return False
 
         return True
 
     async def on_close(self) -> None:
-        if not self.transport.is_closing():
+        if isinstance(self.transport, asyncio.DatagramTransport) and not self.transport.is_closing():
             self.transport.close()

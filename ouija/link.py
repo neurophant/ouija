@@ -1,7 +1,7 @@
 import asyncio
 from typing import Tuple
 
-from .packet import Packet
+from .packet import Packet, Phase
 from .telemetry import Telemetry
 from .tuning import Tuning
 from .ouija import Ouija
@@ -40,18 +40,23 @@ class Link(Ouija):
         if not packet.host or not packet.port:
             return False
 
-        if self.opened.is_set():
-            await self.send_ack_open()
-            return False
+        open_ack_packet = Packet(
+            phase=Phase.OPEN,
+            ack=True,
+            token=self.tuning.token,
+        )
+        if not self.opened.is_set():
+            self.remote_host = packet.host
+            self.remote_port = packet.port
+            self.reader, self.writer = await asyncio.open_connection(self.remote_host, self.remote_port)
+            self.opened.set()
+            asyncio.create_task(self.serve())
+            self.proxy.links[self.addr] = self
+            await self.send_packet(packet=open_ack_packet)
+            return True
 
-        self.remote_host = packet.host
-        self.remote_port = packet.port
-        self.reader, self.writer = await asyncio.open_connection(self.remote_host, self.remote_port)
-        self.opened.set()
-        asyncio.create_task(self.serve())
-        self.proxy.links[self.addr] = self
-        await self.send_ack_open()
-        return True
+        await self.send_packet(packet=open_ack_packet)
+        return False
 
     async def on_serve(self) -> bool:
         return True     # pragma: no cover
