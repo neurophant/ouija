@@ -280,18 +280,23 @@ class Ouija:
 
     async def close(self) -> None:
         if self.opened.is_set():
-            await self.send_close()
+            self.opened.clear()
+            self.telemetry.close()
+
             try:
+                await self.send_close()
                 await asyncio.wait_for(self.write_closed.wait(), self.tuning.serving_timeout)
-            except TimeoutError:
+            except Exception:
                 pass
 
-        self.opened.clear()
         self.read_closed.set()
         self.write_closed.set()
 
-        self.writer.close()
-        await self.writer.wait_closed()
+        if isinstance(self.writer, asyncio.StreamWriter) and not self.writer.is_closing():
+            try:
+                self.writer.close()
+                await self.writer.wait_closed()
+            except Exception:
+                pass
 
         await self.on_close()
-        self.telemetry.close()
