@@ -23,10 +23,10 @@ async def main() -> None:
         serving_timeout=30.0,
         tcp_buffer=1024,
         tcp_timeout=0.5,
-        udp_payload=512,
-        udp_timeout=1.0,
-        udp_retries=10,
-        udp_capacity=1000,
+        udp_payload=1024,
+        udp_timeout=3.0,
+        udp_retries=5,
+        udp_capacity=10000,
         udp_resend_sleep=0.1,
     )
     proxy = Proxy(
