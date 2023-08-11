@@ -71,8 +71,6 @@ class Ouija:
             await self.write(data=recv.data, drain=recv.drain)
             self.recv_seq += 1
 
-        await self.send_ack_data(seq=packet.seq)
-
         if len(self.recv_buf) >= self.tuning.udp_capacity:
             await self.close()
             self.telemetry.recv_buf_overload()
@@ -167,17 +165,20 @@ class Ouija:
 
                 self.telemetry.open()
             case Phase.DATA:
-                if not self.opened.is_set() or self.write_closed.is_set():
-                    return
+                #if not self.opened.is_set() or self.write_closed.is_set():
+                #    return
 
                 if packet.ack:
                     await self.dequeue_send(seq=packet.seq)
                 else:
+                    await self.send_ack_data(seq=packet.seq)
                     await self.recv(packet=packet)
             case Phase.CLOSE:
                 if packet.ack:
+                    print(id(self), time.time(), 'ack close')
                     self.read_closed.set()
                 else:
+                    print(id(self), time.time(), 'close')
                     await self.send_ack_close()
                     self.write_closed.set()
             case _:     # pragma: no cover
@@ -203,17 +204,19 @@ class Ouija:
 
     async def resend_wrapped(self) -> None:
         while self.opened.is_set() or self.sent_buf:
-            await asyncio.sleep(self.tuning.udp_timeout)
-
             for seq in sorted(self.sent_buf.keys()):
                 delta = int(time.time()) - self.sent_buf[seq].timestamp
 
                 if delta >= self.tuning.serving_timeout or self.sent_buf[seq].retries >= self.tuning.udp_retries:
-                    return
+                    print(id(self), time.time(), 'resend quit')
+                    break
 
                 if delta >= self.tuning.udp_timeout:
                     await self.send(data=self.sent_buf[seq].data)
                     self.sent_buf[seq].retries += 1
+            await asyncio.sleep(self.tuning.udp_timeout)
+        self.opened.clear()
+        print(id(self), time.time(), 'resend end')
 
     async def resend(self) -> None:
         try:
@@ -245,6 +248,7 @@ class Ouija:
                 continue
 
             if not data:
+                print(id(self), time.time(), 'stream end')
                 break
 
             for idx in range(0, len(data), self.tuning.udp_payload):
@@ -252,6 +256,8 @@ class Ouija:
                     data=data[idx:idx + self.tuning.udp_payload],
                     drain=True if len(data) - idx <= self.tuning.udp_payload else False,
                 )
+
+        self.opened.clear()
 
     async def serve(self) -> None:
         """Serve TCP stream with timeout
@@ -278,19 +284,21 @@ class Ouija:
         :returns: None"""
         raise NotImplementedError
 
-    async def close(self) -> None:
-        if self.opened.is_set():
-            self.opened.clear()
-            self.telemetry.close()
-
+    async def read_close(self) -> None:
+        if not self.read_closed.is_set():
             try:
                 await self.send_close()
+            except Exception:
+                pass
+            self.read_closed.set()
+
+    async def write_close(self) -> None:
+        if not self.write_closed.is_set():
+            try:
                 await asyncio.wait_for(self.write_closed.wait(), self.tuning.serving_timeout)
             except Exception:
                 pass
-
-        self.read_closed.set()
-        self.write_closed.set()
+            self.write_closed.set()
 
         if isinstance(self.writer, asyncio.StreamWriter) and not self.writer.is_closing():
             try:
@@ -299,4 +307,11 @@ class Ouija:
             except Exception:
                 pass
 
+    async def close(self) -> None:
+        if self.opened.is_set():
+            self.opened.clear()
+            self.telemetry.close()
+
+        await self.read_close()
+        await self.write_close()
         await self.on_close()

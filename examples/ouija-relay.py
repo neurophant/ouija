@@ -34,7 +34,7 @@ async def main() -> None:
         proxy_host='127.0.0.1',
         proxy_port=50000,
     )
-    asyncio.create_task(interface.debug())
+    #asyncio.create_task(interface.debug())
     server = await asyncio.start_server(
         interface.serve,
         '127.0.0.1',
