@@ -36,10 +36,11 @@ class Ouija:
         await self.on_send(data=data)
         self.telemetry.send(data=data)
 
-    async def send_packet(self, *, packet: Packet) -> bytes:
-        data = packet.binary(fernet=self.tuning.fernet)
-        await self.send(data=data)
-        return data
+    def packet_binary(self, *, packet: Packet) -> bytes:
+        return packet.binary(fernet=self.tuning.fernet)
+
+    async def send_packet(self, *, packet: Packet) -> None:
+        await self.send(data=self.packet_binary(packet=packet))
 
     async def send_retry(self, *, packet: Packet, event: asyncio.Event) -> None:
         for _ in range(self.tuning.udp_retries):
@@ -130,7 +131,7 @@ class Ouija:
         except TokenError:
             self.telemetry.token_error()
         except OnOpenError:
-            pass
+            return
         except BufOverloadError:
             self.telemetry.recv_buf_overload()
         except ConnectionError as e:
@@ -152,8 +153,8 @@ class Ouija:
                 sent = self.sent_buf[seq]
                 delta = time.time() - sent.timestamp
 
-                if delta >= self.tuning.serving_timeout or sent.retries >= self.tuning.udp_retries:
-                    break
+                if delta >= self.tuning.udp_timeout * self.tuning.udp_retries:
+                    self.sent_buf.pop(seq, None)
 
                 if delta >= self.tuning.udp_timeout * sent.retries:
                     await self.send(data=sent.data)
@@ -201,7 +202,8 @@ class Ouija:
                     data=data[idx:idx + self.tuning.udp_payload],
                     drain=True if len(data) - idx <= self.tuning.udp_payload else False,
                 )
-                self.sent_buf[self.sent_seq] = Sent(data=await self.send_packet(packet=data_packet))
+                self.sent_buf[self.sent_seq] = Sent(data=self.packet_binary(packet=data_packet))
+                await self.send_packet(packet=data_packet)
                 self.sent_seq += 1
 
                 if len(self.sent_buf) >= self.tuning.udp_capacity:
@@ -216,7 +218,7 @@ class Ouija:
         try:
             await asyncio.wait_for(self.serve_wrapped(), self.tuning.serving_timeout)
         except OnServeError:
-            pass
+            return
         except BufOverloadError:
             self.telemetry.send_buf_overload()
         except TimeoutError:
