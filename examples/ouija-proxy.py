@@ -20,13 +20,13 @@ async def main() -> None:
     tuning = Tuning(
         fernet=Fernet('bdDmN4VexpDvTrs6gw8xTzaFvIBobFg1Cx2McFB1RmI='),
         token='secret',
-        serving_timeout=60.0,
+        serving_timeout=30.0,
         tcp_buffer=1024,
         tcp_timeout=1.0,
-        udp_payload=512,
+        udp_payload=1024,
         udp_timeout=1.0,
         udp_retries=10,
-        udp_capacity=10000,
+        udp_capacity=1000,
         udp_resend_sleep=0.1,
     )
     proxy = Proxy(
