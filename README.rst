@@ -33,7 +33,7 @@ Tuning
 
 * fernet - Fernet instance with provided secret key - use Fernet.generate_key()
 * token - your secret token - UUID4 or anything else
-* serving_timeout - timeout per serve/resend workers, 2X for handlers, seconds
+* serving_timeout - timeout for serve/resend workers, 2X for handlers, seconds
 * tcp_buffer - TCP buffer size, bytes
 * tcp_timeout - TCP awaiting timeout, seconds
 * udp_payload - UDP payload size, bytes
