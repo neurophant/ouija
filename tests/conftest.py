@@ -33,13 +33,14 @@ def tuning_test(fernet_test, token_test):
     return Tuning(
         fernet=fernet_test,
         token=token_test,
-        serving_timeout=5,
+        serving_timeout=3.0,
         tcp_buffer=1024,
-        tcp_timeout=1,
+        tcp_timeout=1.0,
         udp_payload=512,
-        udp_timeout=1,
-        udp_retries=2,
-        udp_capacity=1000,
+        udp_timeout=0.5,
+        udp_retries=5,
+        udp_capacity=100,
+        udp_resend_sleep=0.1,
     )
 
 
@@ -54,11 +55,12 @@ class OuijaTest(Ouija):
     ):
         self.telemetry = telemetry
         self.tuning = tuning
-        self.reader = None
-        self.writer = None
+        self.reader = AsyncMock()
+        self.writer = AsyncMock()
         self.remote_host = remote_host
         self.remote_port = remote_port
         self.opened = asyncio.Event()
+        self.sync = asyncio.Event()
         self.sent_buf = dict()
         self.sent_seq = 0
         self.read_closed = asyncio.Event()
@@ -118,4 +120,4 @@ def proxy_test(telemetry_test, tuning_test):
         tuning=tuning_test,
         proxy_host='0.0.0.0',
         proxy_port=50000,
-)
+    )

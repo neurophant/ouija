@@ -1,5 +1,5 @@
-import dataclasses
 import time
+from dataclasses import dataclass, field
 from enum import IntEnum
 from typing import Optional
 import base64
@@ -26,7 +26,7 @@ TOKENS = {
 }
 
 
-@dataclasses.dataclass(kw_only=True)
+@dataclass(kw_only=True)
 class Packet:
     phase: Phase
     ack: bool
@@ -56,14 +56,14 @@ class Packet:
         return base64.urlsafe_b64decode(fernet.encrypt(pbjson.dumps(json)))
 
 
-@dataclasses.dataclass(kw_only=True)
+@dataclass(kw_only=True)
 class Sent:
     data: bytes
-    timestamp: float = time.time()
+    timestamp: float = field(default_factory=time.time)
     retries: int = 1
 
 
-@dataclasses.dataclass(kw_only=True)
+@dataclass(kw_only=True)
 class Received:
     data: bytes
     drain: bool

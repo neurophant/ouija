@@ -1,9 +1,9 @@
-import dataclasses
+from dataclasses import dataclass
 
 from cryptography.fernet import Fernet
 
 
-@dataclasses.dataclass(kw_only=True)
+@dataclass(kw_only=True)
 class Tuning:
     fernet: Fernet
     token: str

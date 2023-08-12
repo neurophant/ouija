@@ -1,8 +1,8 @@
-import dataclasses
+from dataclasses import dataclass
 import datetime
 
 
-@dataclasses.dataclass(kw_only=True)
+@dataclass(kw_only=True)
 class Telemetry:
     links: int = 0
     opened: int = 0
