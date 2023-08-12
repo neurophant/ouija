@@ -33,13 +33,14 @@ Tuning
 
 * fernet - Fernet instance with provided secret key - use Fernet.generate_key()
 * token - your secret token - UUID4 or anything else
-* serving_timeout - total timeout per worker, seconds
+* serving_timeout - timeout per serve/resend workers, 2X for handlers, seconds
 * tcp_buffer - TCP buffer size, bytes
 * tcp_timeout - TCP awaiting timeout, seconds
 * udp_payload - UDP payload size, bytes
 * udp_timeout - UDP awaiting timeout, seconds
 * udp_retries - UDP max retry count per interaction
 * udp_capacity - UDP send/receive buffer capacity - max packet count
+* udp_resend_sleep - UDP resend sleep between retries, seconds
 
 Requirements
 ------------
@@ -75,13 +76,14 @@ ouija-relay - HTTPS proxy server interface:
         tuning = Tuning(
             fernet=Fernet('bdDmN4VexpDvTrs6gw8xTzaFvIBobFg1Cx2McFB1RmI='),
             token='secret',
-            serving_timeout=30,
+            serving_timeout=30.0,
             tcp_buffer=2048,
-            tcp_timeout=1,
+            tcp_timeout=1.0,
             udp_payload=1024,
-            udp_timeout=3,
+            udp_timeout=3.0,
             udp_retries=5,
             udp_capacity=1000,
+            udp_resend_sleep=0.5,
         )
         interface = Interface(
             telemetry=Telemetry(),
@@ -119,13 +121,14 @@ ouija-proxy - UDP-relayed TCP proxy server:
         tuning = Tuning(
             fernet=Fernet('bdDmN4VexpDvTrs6gw8xTzaFvIBobFg1Cx2McFB1RmI='),
             token='secret',
-            serving_timeout=30,
+            serving_timeout=30.0,
             tcp_buffer=2048,
-            tcp_timeout=1,
+            tcp_timeout=1.0,
             udp_payload=1024,
-            udp_timeout=3,
+            udp_timeout=3.0,
             udp_retries=5,
             udp_capacity=1000,
+            udp_resend_sleep=0.5,
         )
         proxy = Proxy(
             telemetry=Telemetry(),
