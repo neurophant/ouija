@@ -1,7 +1,7 @@
 Ouija
 =====
 
-Python library for building and accessing UDP-relayed TCP proxies
+Python library to build reliable UDP tunnels for TCP traffic
 
 |pypi|
 
