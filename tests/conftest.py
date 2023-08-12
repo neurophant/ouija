@@ -39,7 +39,7 @@ def tuning_test(fernet_test, token_test):
         udp_payload=512,
         udp_timeout=0.5,
         udp_retries=5,
-        udp_capacity=100,
+        udp_capacity=10,
         udp_resend_sleep=0.1,
     )
 
