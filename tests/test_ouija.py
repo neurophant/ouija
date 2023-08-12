@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock
 import pytest
 
 from ouija import Packet, Phase
-from ouija.exception import SendRetryError, TokenError, OnOpenError
+from ouija.exception import SendRetryError, TokenError, OnOpenError, OnServeError
 from ouija.packet import Sent
 
 
@@ -217,14 +217,6 @@ async def test_resend_wrapped(ouija_test, data_test):
     ouija_test.send.assert_awaited()
 
 
-"""
-@pytest.mark.asyncio
-async def test_resend_wrapped_empty(ouija_test):
-    ouija_test.close = AsyncMock()
-    await ouija_test.resend_wrapped()
-    ouija_test.close.assert_not_awaited()
-
-
 @pytest.mark.asyncio
 async def test_resend(ouija_test):
     ouija_test.resend_wrapped = AsyncMock()
@@ -265,36 +257,31 @@ async def test_on_serve(ouija_test):
 async def test_serve_wrapped(ouija_test, data_test):
     async def resetter():
         await asyncio.sleep(3)
-        ouija_test.opened.clear()
-    ouija_test.on_serve = AsyncMock(return_value=True)
+        ouija_test.sync.clear()
+
+    async def read(*args, **kwargs):
+        await asyncio.sleep(0.5)
+        return data_test
+
+    ouija_test.on_serve = AsyncMock()
     ouija_test.resend = AsyncMock()
-    ouija_test.read = AsyncMock(return_value=data_test)
-    ouija_test.enqueue_send = AsyncMock()
-    ouija_test.opened.set()
+    ouija_test.reader.read = read
+    ouija_test.send_packet = AsyncMock()
+    ouija_test.sync.set()
     asyncio.create_task(resetter())
     await ouija_test.serve_wrapped()
     ouija_test.on_serve.assert_awaited()
     ouija_test.resend.assert_awaited()
-    ouija_test.read.assert_awaited()
-    ouija_test.enqueue_send.assert_awaited()
+    ouija_test.send_packet.assert_awaited()
 
 
 @pytest.mark.asyncio
-async def test_serve_wrapped_on_serve_error(ouija_test, data_test):
-    async def resetter():
-        await asyncio.sleep(3)
-        ouija_test.opened.clear()
-    ouija_test.on_serve = AsyncMock(return_value=False)
-    ouija_test.resend = AsyncMock()
-    ouija_test.read = AsyncMock(return_value=data_test)
-    ouija_test.enqueue_send = AsyncMock()
-    ouija_test.opened.set()
-    asyncio.create_task(resetter())
+@pytest.mark.xfail(raises=OnServeError)
+async def test_serve_wrapped_onserveerror(ouija_test, data_test):
+    ouija_test.on_serve = AsyncMock()
+    ouija_test.on_serve.side_effect = OnServeError()
     await ouija_test.serve_wrapped()
     ouija_test.on_serve.assert_awaited()
-    ouija_test.resend.assert_not_awaited()
-    ouija_test.read.assert_not_awaited()
-    ouija_test.enqueue_send.assert_not_awaited()
 
 
 @pytest.mark.asyncio
@@ -302,37 +289,37 @@ async def test_serve_wrapped_on_serve_error(ouija_test, data_test):
 async def test_serve_wrapped_timeouterror(ouija_test, data_test):
     async def resetter():
         await asyncio.sleep(3)
-        ouija_test.opened.clear()
-    ouija_test.on_serve = AsyncMock(return_value=True)
+        ouija_test.sync.clear()
+    ouija_test.on_serve = AsyncMock()
     ouija_test.resend = AsyncMock()
-    ouija_test.read = AsyncMock(return_value=data_test)
-    ouija_test.read.side_effect = TimeoutError()
-    ouija_test.enqueue_send = AsyncMock()
-    ouija_test.opened.set()
+    ouija_test.reader.read = AsyncMock(return_value=data_test)
+    ouija_test.reader.read.side_effect = TimeoutError()
+    ouija_test.send_packet = AsyncMock()
+    ouija_test.sync.set()
     asyncio.create_task(resetter())
     await ouija_test.serve_wrapped()
     ouija_test.on_serve.assert_awaited()
     ouija_test.resend.assert_awaited()
-    ouija_test.read.assert_awaited()
-    ouija_test.enqueue_send.assert_not_awaited()
+    ouija_test.reader.read.assert_awaited()
+    ouija_test.send_packet.assert_not_awaited()
 
 
 @pytest.mark.asyncio
 async def test_serve_wrapped_empty(ouija_test, data_test):
     async def resetter():
         await asyncio.sleep(3)
-        ouija_test.opened.clear()
-    ouija_test.on_serve = AsyncMock(return_value=True)
+        ouija_test.sync.clear()
+    ouija_test.on_serve = AsyncMock()
     ouija_test.resend = AsyncMock()
-    ouija_test.read = AsyncMock(return_value=b'')
-    ouija_test.enqueue_send = AsyncMock()
-    ouija_test.opened.set()
+    ouija_test.reader.read = AsyncMock(return_value=b'')
+    ouija_test.send_packet = AsyncMock()
+    ouija_test.sync.set()
     asyncio.create_task(resetter())
     await ouija_test.serve_wrapped()
     ouija_test.on_serve.assert_awaited()
     ouija_test.resend.assert_awaited()
-    ouija_test.read.assert_awaited()
-    ouija_test.enqueue_send.assert_not_awaited()
+    ouija_test.reader.read.assert_awaited()
+    ouija_test.send_packet.assert_not_awaited()
 
 
 @pytest.mark.asyncio
@@ -347,8 +334,10 @@ async def test_serve(ouija_test):
 async def test_serve_timeouterror(ouija_test):
     ouija_test.serve_wrapped = AsyncMock()
     ouija_test.serve_wrapped.side_effect = TimeoutError()
+    ouija_test.close = AsyncMock()
     await ouija_test.serve()
     ouija_test.serve_wrapped.assert_awaited()
+    ouija_test.close.assert_awaited()
 
 
 @pytest.mark.asyncio
@@ -356,8 +345,10 @@ async def test_serve_timeouterror(ouija_test):
 async def test_serve_connectionerror(ouija_test):
     ouija_test.serve_wrapped = AsyncMock()
     ouija_test.serve_wrapped.side_effect = ConnectionError()
+    ouija_test.close = AsyncMock()
     await ouija_test.serve()
     ouija_test.serve_wrapped.assert_awaited()
+    ouija_test.close.assert_awaited()
 
 
 @pytest.mark.asyncio
@@ -365,13 +356,16 @@ async def test_serve_connectionerror(ouija_test):
 async def test_serve_exception(ouija_test):
     ouija_test.serve_wrapped = AsyncMock()
     ouija_test.serve_wrapped.side_effect = Exception()
+    ouija_test.close = AsyncMock()
     await ouija_test.serve()
     ouija_test.serve_wrapped.assert_awaited()
+    ouija_test.close.assert_awaited()
 
 
 @pytest.mark.asyncio
 async def test_close(ouija_test):
     ouija_test.opened.set()
+    ouija_test.sync.set()
     ouija_test.writer = AsyncMock(spec=asyncio.StreamWriter)
     ouija_test.writer.is_closing = lambda: False
     ouija_test.on_close = AsyncMock()
@@ -382,4 +376,3 @@ async def test_close(ouija_test):
     ouija_test.writer.close.assert_called()
     ouija_test.writer.wait_closed.assert_awaited()
     ouija_test.on_close.assert_awaited()
-"""
