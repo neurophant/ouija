@@ -132,6 +132,9 @@ async def test_process_wrapped_data(ouija_test, data_test):
         drain=True,
     )
     await ouija_test.process_wrapped(data=packet.binary(fernet=ouija_test.tuning.fernet))
+    ouija_test.send_packet.assert_awaited()
+    ouija_test.writer.write.assert_called()
+    ouija_test.writer.drain.assert_awaited()
 
 
 @pytest.mark.asyncio
@@ -145,6 +148,9 @@ async def test_process_wrapped_data_not_opened(ouija_test, data_test):
         drain=False,
     )
     await ouija_test.process_wrapped(data=packet.binary(fernet=ouija_test.tuning.fernet))
+    ouija_test.send_packet.assert_not_awaited()
+    ouija_test.writer.write.assert_not_called()
+    ouija_test.writer.drain.assert_not_awaited()
 
 
 @pytest.mark.asyncio
@@ -160,6 +166,9 @@ async def test_process_wrapped_data_write_closed(ouija_test, data_test):
         drain=True,
     )
     await ouija_test.process_wrapped(data=packet.binary(fernet=ouija_test.tuning.fernet))
+    ouija_test.send_packet.assert_awaited()
+    ouija_test.writer.write.assert_not_called()
+    ouija_test.writer.drain.assert_not_awaited()
 
 
 @pytest.mark.asyncio
@@ -174,6 +183,9 @@ async def test_process_wrapped_seq(ouija_test, data_test):
         drain=True,
     )
     await ouija_test.process_wrapped(data=packet.binary(fernet=ouija_test.tuning.fernet))
+    ouija_test.send_packet.assert_awaited()
+    ouija_test.writer.write.assert_not_called()
+    ouija_test.writer.drain.assert_not_awaited()
 
 
 @pytest.mark.asyncio
@@ -213,6 +225,8 @@ async def test_process_wrapped_close(ouija_test):
         ack=False,
     )
     await ouija_test.process_wrapped(data=packet.binary(fernet=ouija_test.tuning.fernet))
+    assert ouija_test.write_closed.is_set()
+    ouija_test.send_packet.assert_awaited()
 
 
 @pytest.mark.asyncio
@@ -223,6 +237,9 @@ async def test_process_wrapped_close_not_opened(ouija_test):
         ack=False,
     )
     await ouija_test.process_wrapped(data=packet.binary(fernet=ouija_test.tuning.fernet))
+    assert not ouija_test.read_closed.is_set()
+    assert not ouija_test.write_closed.is_set()
+    ouija_test.send_packet.assert_not_awaited()
 
 
 @pytest.mark.asyncio
