@@ -56,7 +56,7 @@ class Ouija:
         raise SendRetryError
 
     async def on_open(self, packet: Packet) -> None:
-        """Hook - process phase open packet, on fail should raise OnOpenError
+        """Hook - process phase open packet, should raise OnOpenError if open failed
         :param packet: Packet
         :returns: None"""
 
@@ -153,12 +153,13 @@ class Ouija:
                 sent = self.sent_buf[seq]
                 delta = time.time() - sent.timestamp
 
+                if delta >= self.tuning.udp_timeout * self.tuning.udp_retries:
+                    self.sent_buf.pop(seq, None)
+                    continue
+
                 if delta >= self.tuning.udp_timeout * sent.retries:
                     await self.send(data=sent.data)
                     sent.retries += 1
-
-                if delta >= self.tuning.udp_timeout * self.tuning.udp_retries:
-                    self.sent_buf.pop(seq, None)
 
         self.sync.clear()
 
@@ -174,7 +175,7 @@ class Ouija:
         await self.close()
 
     async def on_serve(self) -> None:
-        """Hook - executed before serving, on fail should raise OnServeError
+        """Hook - executed before serving, should raise OnServeError if pre-serve failed
         :returns: None"""
 
         raise NotImplementedError

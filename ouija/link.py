@@ -46,18 +46,18 @@ class Link(Ouija):
             ack=True,
             token=self.tuning.token,
         )
-        if not self.opened.is_set():
-            self.remote_host = packet.host
-            self.remote_port = packet.port
-            self.reader, self.writer = await asyncio.open_connection(self.remote_host, self.remote_port)
-            self.opened.set()
-            asyncio.create_task(self.serve())
-            self.proxy.links[self.addr] = self
+        if self.opened.is_set():
             await self.send_packet(packet=open_ack_packet)
-            return
+            raise OnOpenError
 
+        self.remote_host = packet.host
+        self.remote_port = packet.port
+        self.reader, self.writer = await asyncio.open_connection(self.remote_host, self.remote_port)
+        self.opened.set()
+        asyncio.create_task(self.serve())
+        self.proxy.links[self.addr] = self
         await self.send_packet(packet=open_ack_packet)
-        raise OnOpenError
+        return
 
     async def on_serve(self) -> None:   # pragma: no cover
         pass
