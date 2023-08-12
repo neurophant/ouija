@@ -1,6 +1,6 @@
 import asyncio
 import os
-from typing import Dict, Tuple, Optional
+from typing import Optional
 
 from .telemetry import Telemetry
 from .tuning import Tuning
@@ -11,7 +11,7 @@ from .log import logger
 class Proxy(asyncio.DatagramProtocol):
     transport: Optional[asyncio.DatagramTransport]
     telemetry: Telemetry
-    links: Dict[Tuple[str, int], Link]
+    links: dict[tuple[str, int], Link]
     tuning: Tuning
     proxy_host: str
     proxy_port: int

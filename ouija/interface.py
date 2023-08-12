@@ -1,6 +1,5 @@
 import asyncio
 import os
-from typing import Dict
 
 from .tuning import Tuning
 from .relay import Relay
@@ -15,7 +14,7 @@ class Interface:
     proxy_host: str
     proxy_port: int
     index: int
-    sessions: Dict[int, asyncio.Task]
+    sessions: dict[int, asyncio.Task]
 
     def __init__(self, *, telemetry: Telemetry, tuning: Tuning, proxy_host: str, proxy_port: int) -> None:
         self.telemetry = telemetry

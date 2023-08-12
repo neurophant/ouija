@@ -1,6 +1,6 @@
 import asyncio
 import time
-from typing import Optional, Dict
+from typing import Optional
 
 from .exception import OnOpenError, TokenError, BufOverloadError, OnServeError, SendRetryError
 from .telemetry import Telemetry
@@ -18,10 +18,10 @@ class Ouija:
     remote_port: Optional[int]
     opened: asyncio.Event
     sync: asyncio.Event
-    sent_buf: Dict[int, Sent]
+    sent_buf: dict[int, Sent]
     sent_seq: int
     read_closed: asyncio.Event
-    recv_buf: Dict[int, Received]
+    recv_buf: dict[int, Received]
     recv_seq: int
     write_closed: asyncio.Event
 

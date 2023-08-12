@@ -1,5 +1,4 @@
 import asyncio
-from typing import Tuple
 
 from .exception import OnOpenError
 from .packet import Packet, Phase
@@ -14,9 +13,9 @@ if TYPE_CHECKING:   # pragma: no cover
 
 class Link(Ouija):
     proxy: 'Proxy'
-    addr: Tuple[str, int]
+    addr: tuple[str, int]
 
-    def __init__(self,  *, telemetry: Telemetry,  proxy: 'Proxy', addr: Tuple[str, int], tuning: Tuning) -> None:
+    def __init__(self,  *, telemetry: Telemetry,  proxy: 'Proxy', addr: tuple[str, int], tuning: Tuning) -> None:
         self.telemetry = telemetry
         self.proxy = proxy
         self.addr = addr
