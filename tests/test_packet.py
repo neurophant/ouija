@@ -16,4 +16,5 @@ from ouija import Phase, Packet
 def test_packet(packet, fernet_test):
     encoded = packet.binary(fernet=fernet_test)
     decoded = Packet.packet(data=encoded, fernet=fernet_test)
+
     assert decoded == packet
