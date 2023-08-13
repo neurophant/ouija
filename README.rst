@@ -9,13 +9,18 @@ Python library to build reliable UDP tunnels for TCP traffic
     :target: https://badge.fury.io/py/ouija
     :alt: pypi version
 
+Relay and proxy implementations:
+
+* `ouija-relay <https://github.com/neurophant/ouija-relay>`_
+* `ouija-proxy <https://github.com/neurophant/ouija-proxy>`_
+
 Features
 --------
 
 Hides TCP traffic in encrypted UDP traffic between relay and proxy servers
 
 .. image:: https://raw.githubusercontent.com/neurophant/ouija/main/ouija.png
-    :alt: UDP tunnelling
+    :alt: UDP tunneling
     :width: 800
 
 Key entities
