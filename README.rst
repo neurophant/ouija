@@ -1,7 +1,7 @@
 Ouija
 =====
 
-Python library to build reliable UDP tunnels for TCP traffic
+Python library to build reliable TCP and UDP tunnels for TCP traffic
 
 |pypi|
 
@@ -17,7 +17,7 @@ Relay and proxy implementations:
 Features
 --------
 
-Hides TCP traffic in encrypted UDP traffic between relay and proxy servers
+Hides TCP traffic in encrypted TCP/UDP traffic between relay and proxy servers
 
 .. image:: https://raw.githubusercontent.com/neurophant/ouija/main/ouija.png
     :alt: UDP tunneling

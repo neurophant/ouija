@@ -5,7 +5,7 @@ from typing import Optional
 from .telemetry import Telemetry
 from .tuning import Tuning
 from .link import Link
-from .log import logger
+from ..log import logger
 
 
 class Proxy(asyncio.DatagramProtocol):

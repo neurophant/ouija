@@ -6,7 +6,7 @@ from .exception import OnOpenError, TokenError, BufOverloadError, OnServeError, 
 from .telemetry import Telemetry
 from .tuning import Tuning
 from .packet import Phase, Packet, Sent, Received
-from .log import logger
+from ..log import logger
 
 
 class Ouija:

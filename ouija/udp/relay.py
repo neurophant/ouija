@@ -6,7 +6,7 @@ from .telemetry import Telemetry
 from .tuning import Tuning
 from .ouija import Ouija
 from .packet import Packet, Phase
-from .log import logger
+from ..log import logger
 
 
 class Relay(Ouija, asyncio.DatagramProtocol):

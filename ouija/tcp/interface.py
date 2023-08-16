@@ -4,8 +4,8 @@ import os
 from .tuning import Tuning
 from .relay import Relay
 from .telemetry import Telemetry
-from .rawparser import RawParser
-from .log import logger
+from ..rawparser import RawParser
+from ..log import logger
 
 
 class Interface:
