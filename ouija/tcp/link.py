@@ -7,13 +7,11 @@ from .tuning import Tuning
 from ..log import logger
 
 
-class Relay:
+class Link:
     telemetry: Telemetry
     tuning: Tuning
     reader: Optional[asyncio.StreamReader]
     writer: Optional[asyncio.StreamWriter]
-    proxy_host: str
-    proxy_port: int
     remote_host: Optional[str]
     remote_port: Optional[int]
     target_reader: Optional[asyncio.StreamReader]
@@ -27,19 +25,13 @@ class Relay:
             tuning: Tuning,
             reader: asyncio.StreamReader,
             writer: asyncio.StreamWriter,
-            proxy_host: str,
-            proxy_port: int,
-            remote_host: str,
-            remote_port: int,
     ) -> None:
         self.telemetry = telemetry
         self.tuning = tuning
         self.reader = reader
         self.writer = writer
-        self.proxy_host = proxy_host
-        self.proxy_port = proxy_port
-        self.remote_host = remote_host
-        self.remote_port = remote_port
+        self.remote_host = None
+        self.remote_port = None
         self.target_reader = None
         self.target_writer = None
         self.opened = asyncio.Event()
@@ -73,19 +65,18 @@ class Relay:
         await self.close()
 
     async def serve_wrapped(self) -> None:
-        self.target_reader, self.target_writer = await asyncio.open_connection(self.proxy_host, self.proxy_port)
-
-        message = Message(token=self.tuning.token, host=self.remote_host, port=self.remote_port)
-        data = message.binary(fernet=self.tuning.fernet)
-        self.target_writer.write(data)
-        await self.target_writer.drain()
-
-        data = await self.target_reader.read(1024)
+        data = await self.reader.read(1024)
         message = Message.message(data=data, fernet=self.tuning.fernet)
         if message.token != self.tuning.token:
             return
 
-        self.writer.write(data=b'HTTP/1.1 200 Connection Established\r\n\r\n')
+        self.remote_host = message.host
+        self.remote_port = message.port
+        self.target_reader, self.target_writer = await asyncio.open_connection(self.remote_host, self.remote_port)
+
+        message = Message(token=self.tuning.token)
+        data = message.binary(fernet=self.tuning.fernet)
+        self.writer.write(data)
         await self.writer.drain()
 
         self.opened.set()

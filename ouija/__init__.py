@@ -11,3 +11,10 @@ from .udp.relay import Relay as RelayUDP
 from .udp.proxy import Proxy as ProxyUDP
 from .udp.link import Link as LinkUDP
 from .udp.telemetry import Telemetry as TelemetryUDP
+
+from .tcp.tuning import Tuning as TuningTCP
+from .tcp.interface import Interface as InterfaceTCP
+from .tcp.relay import Relay as RelayTCP
+from .tcp.proxy import Proxy as ProxyTCP
+from .tcp.link import Link as LinkTCP
+from .tcp.telemetry import Telemetry as TelemetryTCP

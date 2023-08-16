@@ -16,8 +16,8 @@ TOKENS = {
 @dataclass(kw_only=True)
 class Message:
     token: str
-    host: Optional[str]
-    port: Optional[int]
+    host: Optional[str] = None
+    port: Optional[int] = None
 
     @staticmethod
     def message(*, data: bytes, fernet: Fernet) -> 'Message':
