@@ -21,6 +21,7 @@ async def main() -> None:
         fernet=Fernet('bdDmN4VexpDvTrs6gw8xTzaFvIBobFg1Cx2McFB1RmI='),
         token='secret',
         serving_timeout=20.0,
+        message_buffer=1024,
         tcp_buffer=1024,
         tcp_timeout=1.0,
     )
