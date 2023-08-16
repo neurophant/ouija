@@ -35,20 +35,25 @@ class Link:
         self.target_reader = None
         self.target_writer = None
         self.opened = asyncio.Event()
+        self.sync = asyncio.Event()
 
     async def forward_wrapped(self, *, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
-        while self.opened.is_set():
+        while self.sync.is_set():
             try:
                 data = await asyncio.wait_for(reader.read(self.tuning.tcp_buffer), self.tuning.tcp_timeout)
             except TimeoutError:
                 continue
 
             if not data:
-                self.opened.clear()
                 break
+
+            self.telemetry.recv(data=data)
 
             writer.write(data)
             await writer.drain()
+            self.telemetry.send(data=data)
+
+        self.sync.clear()
 
     async def forward(self, *, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
         try:
@@ -82,6 +87,7 @@ class Link:
         self.opened.set()
         self.telemetry.open()
 
+        self.sync.set()
         await asyncio.gather(
             self.forward(reader=self.reader, writer=self.target_writer),
             self.forward(reader=self.target_reader, writer=self.writer),
@@ -102,6 +108,8 @@ class Link:
         await self.close()
 
     async def close(self) -> None:
+        self.sync.clear()
+
         if self.opened.is_set():
             self.opened.clear()
             self.telemetry.close()
