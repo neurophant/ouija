@@ -1,7 +1,7 @@
 import asyncio
 from typing import Optional
 
-from .exception import OnOpenError, OnServeError, SendRetryError
+from ..exception import OnOpenError, OnServeError, SendRetryError
 from .telemetry import Telemetry
 from .tuning import Tuning
 from .ouija import Ouija

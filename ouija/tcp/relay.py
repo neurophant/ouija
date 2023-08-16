@@ -1,6 +1,6 @@
 import asyncio
 
-from .exception import TokenError
+from ..exception import TokenError
 from .message import Message, SEPARATOR
 from .ouija import Ouija
 from .telemetry import Telemetry

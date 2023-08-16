@@ -1,6 +1,6 @@
 import asyncio
 
-from .exception import OnOpenError
+from ..exception import OnOpenError
 from .packet import Packet, Phase
 from .telemetry import Telemetry
 from .tuning import Tuning

@@ -2,7 +2,7 @@ import asyncio
 from asyncio import IncompleteReadError
 from typing import Optional
 
-from .exception import TokenError
+from ..exception import TokenError
 from .message import Message, SEPARATOR
 from .telemetry import Telemetry
 from .tuning import Tuning

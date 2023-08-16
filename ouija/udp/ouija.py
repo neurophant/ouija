@@ -2,7 +2,7 @@ import asyncio
 import time
 from typing import Optional
 
-from .exception import OnOpenError, TokenError, BufOverloadError, OnServeError, SendRetryError
+from ..exception import OnOpenError, TokenError, BufOverloadError, OnServeError, SendRetryError
 from .telemetry import Telemetry
 from .tuning import Tuning
 from .packet import Phase, Packet, Sent, Received
