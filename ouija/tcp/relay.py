@@ -1,8 +1,8 @@
 import asyncio
 
 from .exception import TokenError
-from .message import Message
-from .ouija import Ouija, Direction
+from .message import Message, SEPARATOR
+from .ouija import Ouija
 from .telemetry import Telemetry
 from .tuning import Tuning
 
@@ -25,7 +25,7 @@ class Relay(Ouija):
     ) -> None:
         self.telemetry = telemetry
         self.tuning = tuning
-        self.direction = Direction.RELAY
+        self.crypt = True
         self.reader = reader
         self.writer = writer
         self.proxy_host = proxy_host
@@ -45,7 +45,7 @@ class Relay(Ouija):
         self.target_writer.write(data)
         await self.target_writer.drain()
 
-        data = await self.target_reader.read(self.tuning.message_buffer)
+        data = await asyncio.wait_for(self.target_reader.readuntil(SEPARATOR), self.tuning.message_timeout)
         message = Message.message(data=data, fernet=self.tuning.fernet)
         if message.token != self.tuning.token:
             raise TokenError

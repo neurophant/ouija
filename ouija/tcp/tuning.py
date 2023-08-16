@@ -8,6 +8,6 @@ class Tuning:
     fernet: Fernet
     token: str
     serving_timeout: float
-    message_buffer: int
     tcp_buffer: int
     tcp_timeout: float
+    message_timeout: float

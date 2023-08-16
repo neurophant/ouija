@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-import base64
 from typing import Optional
 
 import pbjson
@@ -13,6 +12,9 @@ TOKENS = {
 }
 
 
+SEPARATOR = b'\r\n\r\n'
+
+
 @dataclass(kw_only=True)
 class Message:
     token: str
@@ -21,7 +23,7 @@ class Message:
 
     @staticmethod
     def message(*, data: bytes, fernet: Fernet) -> 'Message':
-        json = pbjson.loads(fernet.decrypt(base64.urlsafe_b64encode(data)))
+        json = pbjson.loads(fernet.decrypt(data[:-len(SEPARATOR)]))
         return Message(
             token=json.get(TOKENS['token']),
             host=json.get(TOKENS['host'], None),
@@ -30,12 +32,12 @@ class Message:
 
     def binary(self, *, fernet: Fernet) -> bytes:
         json = {TOKENS[k]: v for k, v in self.__dict__.items() if v is not None}
-        return base64.urlsafe_b64decode(fernet.encrypt(pbjson.dumps(json)))
+        return fernet.encrypt(pbjson.dumps(json)) + SEPARATOR
 
     @staticmethod
     def encrypt(*, data: bytes, fernet: Fernet) -> bytes:
-        return base64.urlsafe_b64decode(fernet.encrypt(data))
+        return fernet.encrypt(data) + SEPARATOR
 
     @staticmethod
     def decrypt(*, data: bytes, fernet: Fernet) -> bytes:
-        return fernet.decrypt(base64.urlsafe_b64encode(data))
+        return fernet.decrypt(data[:-len(SEPARATOR)])

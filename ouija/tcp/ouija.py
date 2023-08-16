@@ -1,23 +1,18 @@
 import asyncio
-from enum import IntEnum
+from asyncio import IncompleteReadError
 from typing import Optional
 
 from .exception import TokenError
-from .message import Message
+from .message import Message, SEPARATOR
 from .telemetry import Telemetry
 from .tuning import Tuning
 from ..log import logger
 
 
-class Direction(IntEnum):
-    RELAY = 1
-    PROXY = 2
-
-
 class Ouija:
     telemetry: Telemetry
     tuning: Tuning
-    direction: Direction
+    crypt: bool
     reader: asyncio.StreamReader
     writer: asyncio.StreamWriter
     remote_host: Optional[str]
@@ -30,19 +25,20 @@ class Ouija:
     async def forward_wrapped(self, *, reader: asyncio.StreamReader, writer: asyncio.StreamWriter, crypt: bool) -> None:
         while self.sync.is_set():
             try:
-                data = await asyncio.wait_for(reader.read(self.tuning.tcp_buffer), self.tuning.tcp_timeout)
+                data = await asyncio.wait_for(reader.read(self.tuning.tcp_buffer), self.tuning.tcp_timeout) if crypt \
+                    else await asyncio.wait_for(reader.readuntil(SEPARATOR), self.tuning.message_timeout)
             except TimeoutError:
                 continue
+            except IncompleteReadError:
+                break
 
-            if not data:
+            if data == b'':
                 break
 
             self.telemetry.recv(data=data)
 
-#            if crypt:
-#                data = Message.encrypt(data=data, fernet=self.tuning.fernet)
-#            else:
-#                data = Message.decrypt(data=data, fernet=self.tuning.fernet)
+            data = Message.encrypt(data=data, fernet=self.tuning.fernet) if crypt \
+                else Message.decrypt(data=data, fernet=self.tuning.fernet)
 
             writer.write(data)
             await writer.drain()
@@ -76,19 +72,10 @@ class Ouija:
         self.telemetry.open()
 
         self.sync.set()
-        match self.direction:
-            case Direction.RELAY:
-                await asyncio.gather(
-                    self.forward(reader=self.reader, writer=self.target_writer, crypt=True),
-                    self.forward(reader=self.target_reader, writer=self.writer, crypt=False),
-                )
-            case Direction.PROXY:
-                await asyncio.gather(
-                    self.forward(reader=self.reader, writer=self.target_writer, crypt=False),
-                    self.forward(reader=self.target_reader, writer=self.writer, crypt=True),
-                )
-            case _:
-                pass
+        await asyncio.gather(
+            self.forward(reader=self.reader, writer=self.target_writer, crypt=self.crypt),
+            self.forward(reader=self.target_reader, writer=self.writer, crypt=not self.crypt),
+        )
 
     async def serve(self) -> None:
         try:

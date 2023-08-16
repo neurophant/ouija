@@ -1,8 +1,8 @@
 import asyncio
 
 from .exception import TokenError
-from .message import Message
-from .ouija import Ouija, Direction
+from .message import Message, SEPARATOR
+from .ouija import Ouija
 from .telemetry import Telemetry
 from .tuning import Tuning
 
@@ -18,7 +18,7 @@ class Link(Ouija):
     ) -> None:
         self.telemetry = telemetry
         self.tuning = tuning
-        self.direction = Direction.PROXY
+        self.crypt = False
         self.reader = reader
         self.writer = writer
         self.remote_host = None
@@ -29,7 +29,7 @@ class Link(Ouija):
         self.sync = asyncio.Event()
 
     async def on_serve(self) -> None:
-        data = await self.reader.read(self.tuning.message_buffer)
+        data = await asyncio.wait_for(self.reader.readuntil(SEPARATOR), self.tuning.message_timeout)
         message = Message.message(data=data, fernet=self.tuning.fernet)
         if message.token != self.tuning.token:
             raise TokenError
