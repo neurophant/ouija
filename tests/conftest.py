@@ -5,7 +5,8 @@ from unittest.mock import AsyncMock
 import pytest
 from cryptography.fernet import Fernet
 
-from ouija import Telemetry, Tuning, Ouija, Relay, Link, Interface, Proxy
+from ouija import StreamTelemetry, DatagramTelemetry, StreamTuning, DatagramTuning, StreamOuija, DatagramOuija, \
+    StreamConnector, DatagramConnector, StreamLink, DatagramLink, StreamRelay, DatagramRelay, StreamProxy, DatagramProxy
 
 
 @pytest.fixture
@@ -24,13 +25,18 @@ def fernet_test():
 
 
 @pytest.fixture
-def telemetry_test():
-    return Telemetry()
+def stream_telemetry_test():
+    return StreamTelemetry()
 
 
 @pytest.fixture
-def tuning_test(fernet_test, token_test):
-    return Tuning(
+def datagram_telemetry_test():
+    return DatagramTelemetry()
+
+
+@pytest.fixture
+def datagram_tuning_test(fernet_test, token_test):
+    return DatagramTuning(
         fernet=fernet_test,
         token=token_test,
         serving_timeout=3.0,
@@ -44,12 +50,12 @@ def tuning_test(fernet_test, token_test):
     )
 
 
-class OuijaTest(Ouija):
+class DatagramOuijaTest(DatagramOuija):
     def __init__(
             self,
             *,
-            telemetry: Telemetry,
-            tuning: Tuning,
+            telemetry: DatagramTelemetry,
+            tuning: DatagramTuning,
             remote_host: Optional[str],
             remote_port: Optional[int],
     ):
@@ -70,20 +76,21 @@ class OuijaTest(Ouija):
 
 
 @pytest.fixture
-def ouija_test(telemetry_test, tuning_test):
-    return OuijaTest(
-        telemetry=telemetry_test,
-        tuning=tuning_test,
+def datagram_ouija_test(datagram_telemetry_test, datagram_tuning_test):
+    return DatagramOuijaTest(
+        telemetry=datagram_telemetry_test,
+        tuning=datagram_tuning_test,
         remote_host='example.com',
         remote_port=443,
     )
 
 
 @pytest.fixture
-def relay_test(telemetry_test, tuning_test):
-    return Relay(
-        telemetry=telemetry_test,
-        tuning=tuning_test,
+def datagram_connector_test(datagram_telemetry_test, datagram_tuning_test):
+    return DatagramConnector(
+        telemetry=datagram_telemetry_test,
+        tuning=datagram_tuning_test,
+        relay=AsyncMock(),
         reader=AsyncMock(),
         writer=AsyncMock(),
         proxy_host='127.0.0.1',
@@ -94,30 +101,30 @@ def relay_test(telemetry_test, tuning_test):
 
 
 @pytest.fixture
-def link_test(telemetry_test, tuning_test):
-    return Link(
-        telemetry=telemetry_test,
+def datagram_link_test(datagram_telemetry_test, datagram_tuning_test):
+    return DatagramLink(
+        telemetry=datagram_telemetry_test,
+        tuning=datagram_tuning_test,
         proxy=AsyncMock(),
         addr=('127.0.0.1', 60000),
-        tuning=tuning_test,
     )
 
 
 @pytest.fixture
-def interface_test(telemetry_test, tuning_test):
-    return Interface(
-        telemetry=telemetry_test,
-        tuning=tuning_test,
+def datagram_relay_test(datagram_telemetry_test, datagram_tuning_test):
+    return DatagramRelay(
+        telemetry=datagram_telemetry_test,
+        tuning=datagram_tuning_test,
         proxy_host='127.0.0.1',
         proxy_port=50000,
     )
 
 
 @pytest.fixture
-def proxy_test(telemetry_test, tuning_test):
-    return Proxy(
-        telemetry=telemetry_test,
-        tuning=tuning_test,
+def datagram_proxy_test(datagram_telemetry_test, datagram_tuning_test):
+    return DatagramProxy(
+        telemetry=datagram_telemetry_test,
+        tuning=datagram_tuning_test,
         proxy_host='0.0.0.0',
         proxy_port=50000,
     )

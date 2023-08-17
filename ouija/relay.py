@@ -94,7 +94,7 @@ class StreamRelay(Relay):
             remote_host: str,
             remote_port: int,
     ) -> None:
-        relay = StreamConnector(
+        connector = StreamConnector(
             telemetry=self.telemetry,
             tuning=self.tuning,
             relay=self,
@@ -105,7 +105,7 @@ class StreamRelay(Relay):
             remote_host=remote_host,
             remote_port=remote_port,
         )
-        await relay.serve()
+        await connector.serve()
 
 
 class DatagramRelay(Relay):
@@ -117,7 +117,7 @@ class DatagramRelay(Relay):
             remote_host: str,
             remote_port: int,
     ) -> None:
-        relay = DatagramConnector(
+        connector = DatagramConnector(
             telemetry=self.telemetry,
             tuning=self.tuning,
             relay=self,
@@ -128,4 +128,4 @@ class DatagramRelay(Relay):
             remote_host=remote_host,
             remote_port=remote_port,
         )
-        await relay.serve()
+        await connector.serve()

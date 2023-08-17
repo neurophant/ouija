@@ -1,132 +1,97 @@
-import asyncio
-from unittest.mock import Mock, AsyncMock
+from unittest.mock import AsyncMock
 
 import pytest
+from pytest_mock import MockerFixture
 
-from ouija import Packet, Phase
-from ouija.exception import OnOpenError, SendRetryError, OnServeError
-
-
-def test_relay_connection_made(relay_test):
-    mock = Mock()
-    relay_test.connection_made(mock)
-
-    assert relay_test.transport == mock
+from ouija import Parser
 
 
 @pytest.mark.asyncio
-async def test_relay_datagram_received_async(relay_test, data_test):
-    relay_test.process = AsyncMock()
+async def test_datagram_relay_https_handler(datagram_relay_test, datagram_connector_test, mocker: MockerFixture):
+    mocked_datagram_connector = mocker.patch('ouija.relay.DatagramConnector')
+    mocked_datagram_connector.return_value = datagram_connector_test
+    datagram_connector_test.serve = AsyncMock()
 
-    await relay_test.datagram_received_async(data=data_test, addr='127.0.0.1')
-
-    relay_test.process.assert_awaited()
-
-
-@pytest.mark.asyncio
-async def test_relay_datagram_received(relay_test, data_test):
-    relay_test.datagram_received_async = AsyncMock()
-
-    relay_test.datagram_received(data_test, '127.0.0.1')
-
-    relay_test.datagram_received_async.assert_called()
-
-
-@pytest.mark.asyncio
-async def test_relay_connection_lost(relay_test):
-    relay_test.close = AsyncMock()
-
-    relay_test.connection_lost(Exception())
-
-    relay_test.close.assert_called()
-
-
-@pytest.mark.asyncio
-async def test_relay_on_send(relay_test, data_test):
-    relay_test.transport = Mock()
-
-    await relay_test.on_send(data=data_test)
-
-    relay_test.transport.sendto.assert_called()
-
-
-@pytest.mark.asyncio
-async def test_relay_on_open(relay_test, token_test):
-    packet = Packet(
-        phase=Phase.OPEN,
-        ack=True,
-        token=token_test,
+    await datagram_relay_test.https_handler(
+        reader=AsyncMock(),
+        writer=AsyncMock(),
+        remote_host='example.com',
+        remote_port=443,
     )
 
-    await relay_test.on_open(packet=packet)
-
-    relay_test.writer.write.assert_called()
-    relay_test.writer.drain.assert_awaited()
-    assert relay_test.opened.is_set()
+    datagram_connector_test.serve.assert_awaited()
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(raises=OnOpenError)
-async def test_relay_on_open_not_ack(relay_test, token_test):
-    packet = Packet(
-        phase=Phase.OPEN,
-        ack=False,
-        token=token_test,
-    )
+async def test_datagram_relay_connect_wrapped(datagram_relay_test):
+    reader = AsyncMock()
+    reader.readuntil = AsyncMock(return_value=b'CONNECT https://example.com:443 HTTP/1.1')
+    datagram_relay_test.https_handler = AsyncMock()
 
-    await relay_test.on_open(packet=packet)
+    await datagram_relay_test.connect_wrapped(reader=reader, writer=AsyncMock())
 
-    assert not relay_test.opened.is_set()
+    datagram_relay_test.https_handler.assert_awaited()
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(raises=OnOpenError)
-async def test_relay_on_open_opened(relay_test, token_test):
-    relay_test.opened.set()
-    packet = Packet(
-        phase=Phase.OPEN,
-        ack=True,
-        token=token_test,
-    )
+async def test_datagram_relay_connect_wrapped_request_error(datagram_relay_test, mocker: MockerFixture):
+    reader = AsyncMock()
+    reader.readuntil = AsyncMock(return_value=b'CONNECT https://example.com:443 HTTP/1.1')
+    datagram_relay_test.https_handler = AsyncMock()
+    mocked_rawparser = mocker.patch('ouija.relay.Parser')
+    mocked_rawparser.return_value = Parser(data=b'')
 
-    await relay_test.on_open(packet=packet)
+    await datagram_relay_test.connect_wrapped(reader=reader, writer=AsyncMock())
 
-
-@pytest.mark.asyncio
-async def test_relay_on_serve(relay_test, token_test):
-    relay_test.send_retry = AsyncMock()
-
-    await relay_test.on_serve()
-
-    relay_test.send_retry.assert_awaited()
+    datagram_relay_test.https_handler.assert_not_awaited()
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(raises=OnServeError)
-async def test_relay_on_serve_sendretryerror(relay_test, token_test):
-    relay_test.send_retry = AsyncMock()
-    relay_test.send_retry.side_effect = SendRetryError()
+async def test_datagram_relay_connect_wrapped_method_error(datagram_relay_test):
+    reader = AsyncMock()
+    reader.readuntil = AsyncMock(return_value=b'GET example.com HTTP/1.1')
+    datagram_relay_test.https_handler = AsyncMock()
 
-    await relay_test.on_serve()
+    await datagram_relay_test.connect_wrapped(reader=reader, writer=AsyncMock())
 
-    relay_test.send_retry.assert_awaited()
-
-
-@pytest.mark.asyncio
-async def test_relay_on_close(relay_test, token_test):
-    relay_test.transport = AsyncMock(spec=asyncio.DatagramTransport)
-    relay_test.transport.is_closing = lambda: False
-
-    await relay_test.on_close()
-
-    relay_test.transport.close.assert_called()
+    datagram_relay_test.https_handler.assert_not_awaited()
 
 
 @pytest.mark.asyncio
-async def test_relay_on_close_closing(relay_test, token_test):
-    relay_test.transport = AsyncMock(spec=asyncio.DatagramTransport)
-    relay_test.transport.is_closing = lambda: True
+async def test_datagram_relay_connect(datagram_relay_test):
+    datagram_relay_test.connect_wrapped = AsyncMock()
 
-    await relay_test.on_close()
+    await datagram_relay_test.connect(reader=AsyncMock(), writer=AsyncMock())
 
-    relay_test.transport.close.assert_not_called()
+    datagram_relay_test.connect_wrapped.assert_awaited()
+
+
+@pytest.mark.asyncio
+@pytest.mark.xfail(raises=TimeoutError)
+async def test_datagram_relay_connect_timeouterror(datagram_relay_test):
+    datagram_relay_test.connect_wrapped = AsyncMock()
+    datagram_relay_test.connect_wrapped.side_effect = TimeoutError()
+
+    await datagram_relay_test.connect(reader=AsyncMock(), writer=AsyncMock())
+
+    datagram_relay_test.connect_wrapped.assert_awaited()
+
+
+@pytest.mark.asyncio
+@pytest.mark.xfail(raises=Exception)
+async def test_datagram_relay_session_exception(datagram_relay_test):
+    datagram_relay_test.connect_wrapped = AsyncMock()
+    datagram_relay_test.connect_wrapped.side_effect = Exception()
+
+    await datagram_relay_test.connect(reader=AsyncMock(), writer=AsyncMock())
+
+    datagram_relay_test.connect_wrapped.assert_awaited()
+
+
+@pytest.mark.asyncio
+async def test_datagram_relay_serve(datagram_relay_test):
+    datagram_relay_test.connect = AsyncMock()
+
+    await datagram_relay_test.serve(reader=AsyncMock(), writer=AsyncMock())
+
+    datagram_relay_test.connect.assert_called()

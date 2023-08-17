@@ -83,7 +83,7 @@ class DatagramProxy(Proxy, asyncio.DatagramProtocol):
         self.transport = transport
 
     async def datagram_received_async(self, *, data, addr) -> None:
-        link = self.links.get(addr, DatagramLink(telemetry=self.telemetry, proxy=self, addr=addr, tuning=self.tuning))
+        link = self.links.get(addr, DatagramLink(telemetry=self.telemetry, tuning=self.tuning, proxy=self, addr=addr))
         await link.process(data=data)
 
     def datagram_received(self, data, addr) -> None:
