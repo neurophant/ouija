@@ -11,7 +11,7 @@ from .log import logger
 class Proxy:
     telemetry: Union[StreamTelemetry, DatagramTelemetry]
     tuning: Union[StreamTuning, DatagramTuning]
-    links: Union[dict[str, StreamLink], dict[tuple[str, int], DatagramLink]]
+    links: dict[Union[str, tuple[str, int]], Union[StreamLink, DatagramLink]]
 
     async def serve(self, *args, **kwargs) -> None:
         """Proxy server entry point - should be overridden with protocol-based implementation

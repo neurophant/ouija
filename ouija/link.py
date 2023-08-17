@@ -1,7 +1,7 @@
 import asyncio
 import uuid
 
-from .exception import TokenError, OnOpenError
+from .exception import TokenError, OnOpenError, OnServeError
 from .data import Message, SEPARATOR, Packet, Phase
 from .ouija import StreamOuija, DatagramOuija
 from .telemetry import StreamTelemetry, DatagramTelemetry
@@ -9,7 +9,7 @@ from .tuning import StreamTuning, DatagramTuning
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:   # pragma: no cover
-    from proxy import StreamProxy, DatagramProxy
+    from .proxy import StreamProxy, DatagramProxy
 
 
 class StreamLink(StreamOuija):
@@ -40,7 +40,11 @@ class StreamLink(StreamOuija):
         self.sync = asyncio.Event()
 
     async def on_serve(self) -> None:
-        data = await asyncio.wait_for(self.reader.readuntil(SEPARATOR), self.tuning.message_timeout)
+        try:
+            data = await asyncio.wait_for(self.reader.readuntil(SEPARATOR), self.tuning.message_timeout)
+        except (TimeoutError, asyncio.IncompleteReadError):
+            raise OnServeError
+
         message = Message.message(data=data, fernet=self.tuning.fernet)
         if message.token != self.tuning.token:
             raise TokenError

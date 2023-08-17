@@ -57,7 +57,11 @@ class StreamConnector(StreamOuija):
         self.target_writer.write(data)
         await self.target_writer.drain()
 
-        data = await asyncio.wait_for(self.target_reader.readuntil(SEPARATOR), self.tuning.message_timeout)
+        try:
+            data = await asyncio.wait_for(self.target_reader.readuntil(SEPARATOR), self.tuning.message_timeout)
+        except (TimeoutError, asyncio.IncompleteReadError):
+            raise OnServeError
+
         message = Message.message(data=data, fernet=self.tuning.fernet)
         if message.token != self.tuning.token:
             raise TokenError

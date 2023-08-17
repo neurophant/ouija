@@ -1,6 +1,5 @@
 import asyncio
 import time
-from asyncio import IncompleteReadError
 from typing import Optional
 
 from .exception import TokenError, SendRetryError, BufOverloadError, OnOpenError, OnServeError
@@ -30,7 +29,7 @@ class StreamOuija:
                     else await asyncio.wait_for(reader.readuntil(SEPARATOR), self.tuning.message_timeout)
             except TimeoutError:
                 continue
-            except IncompleteReadError:
+            except asyncio.IncompleteReadError:
                 break
 
             if data == b'':
