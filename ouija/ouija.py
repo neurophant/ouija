@@ -29,10 +29,10 @@ class StreamOuija:
                     else await asyncio.wait_for(reader.readuntil(SEPARATOR), self.tuning.message_timeout)
             except TimeoutError:
                 continue
-            except asyncio.IncompleteReadError:
+            except EOFError:
                 break
 
-            if data == b'':
+            if not data:
                 break
 
             if not crypt:
@@ -314,7 +314,7 @@ class DatagramOuija:
             except TimeoutError:
                 continue
 
-            if data == b'':
+            if not data:
                 break
 
             for idx in range(0, len(data), self.tuning.udp_payload):

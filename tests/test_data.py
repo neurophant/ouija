@@ -1,6 +1,6 @@
 import pytest
 
-from ouija import Parser, Packet, Phase
+from ouija import Parser, Packet, Phase, Message
 
 
 def test_parser_connect():
@@ -47,3 +47,10 @@ def test_packet(packet, fernet_test):
     decoded = Packet.packet(data=encoded, fernet=fernet_test)
 
     assert decoded == packet
+
+
+def test_message_encrypt_decrypt(fernet_test, data_test):
+    encrypted = Message.encrypt(data=data_test, fernet=fernet_test)
+    decrypted = Message.decrypt(data=encrypted, fernet=fernet_test)
+
+    assert decrypted == data_test

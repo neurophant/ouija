@@ -42,7 +42,7 @@ class StreamLink(StreamOuija):
     async def on_serve(self) -> None:
         try:
             data = await asyncio.wait_for(self.reader.readuntil(SEPARATOR), self.tuning.message_timeout)
-        except (TimeoutError, asyncio.IncompleteReadError):
+        except (TimeoutError, EOFError):
             raise OnServeError
 
         message = Message.message(data=data, fernet=self.tuning.fernet)

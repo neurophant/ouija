@@ -2,9 +2,10 @@ import asyncio
 from unittest.mock import Mock, AsyncMock
 
 import pytest
+from pytest_mock import MockerFixture
 
-from ouija import Packet, Phase
-from ouija.exception import OnOpenError, SendRetryError, OnServeError
+from ouija import Packet, Phase, Message
+from ouija.exception import OnOpenError, SendRetryError, OnServeError, TokenError
 
 
 def test_datagram_connector_connection_made(datagram_connector_test):
@@ -130,3 +131,99 @@ async def test_datagram_connector_on_close_closing(datagram_connector_test, toke
     await datagram_connector_test.on_close()
 
     datagram_connector_test.transport.close.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_stream_connector_on_serve(
+        stream_connector_test,
+        token_test,
+        fernet_test,
+        data_test,
+        mocker: MockerFixture,
+):
+    async def open_connection(*args, **kwargs):
+        return AsyncMock(), AsyncMock()
+
+    async def wait_for(*args, **kwargs):
+        message = Message(token=token_test)
+        return message.binary(fernet=fernet_test)
+
+    mocked_asyncio = mocker.patch('ouija.connector.asyncio')
+    mocked_asyncio.open_connection = open_connection
+    mocked_asyncio.wait_for = wait_for
+    stream_connector_test.target_reader = AsyncMock()
+    stream_connector_test.target_writer = AsyncMock()
+
+    await stream_connector_test.on_serve()
+
+    stream_connector_test.target_writer.write.assert_called()
+    stream_connector_test.target_writer.drain.assert_awaited()
+    stream_connector_test.target_reader.readuntil.assert_called()
+    stream_connector_test.writer.write.assert_called()
+    stream_connector_test.writer.drain.assert_awaited()
+
+
+@pytest.mark.asyncio
+@pytest.mark.xfail(raises=OnServeError)
+async def test_stream_connector_on_serve_timeouterror(
+        stream_connector_test,
+        token_test,
+        fernet_test,
+        data_test,
+        mocker: MockerFixture,
+):
+    async def open_connection(*args, **kwargs):
+        return AsyncMock(), AsyncMock()
+
+    mocked_asyncio = mocker.patch('ouija.connector.asyncio')
+    mocked_asyncio.open_connection = open_connection
+    mocked_asyncio.wait_for.side_effect = TimeoutError
+    stream_connector_test.target_reader = AsyncMock()
+    stream_connector_test.target_writer = AsyncMock()
+
+    await stream_connector_test.on_serve()
+
+    stream_connector_test.target_writer.write.assert_called()
+    stream_connector_test.target_writer.drain.assert_awaited()
+    stream_connector_test.target_reader.readuntil.assert_called()
+    stream_connector_test.writer.write.assert_not_called()
+    stream_connector_test.writer.drain.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+@pytest.mark.xfail(raises=TokenError)
+async def test_stream_connector_on_serve_tokenerror(
+        stream_connector_test,
+        fernet_test,
+        data_test,
+        mocker: MockerFixture,
+):
+    async def open_connection(*args, **kwargs):
+        return AsyncMock(), AsyncMock()
+
+    async def wait_for(*args, **kwargs):
+        message = Message(token='invalid')
+        return message.binary(fernet=fernet_test)
+
+    mocked_asyncio = mocker.patch('ouija.connector.asyncio')
+    mocked_asyncio.open_connection = open_connection
+    mocked_asyncio.wait_for = wait_for
+    stream_connector_test.target_reader = AsyncMock()
+    stream_connector_test.target_writer = AsyncMock()
+
+    await stream_connector_test.on_serve()
+
+    stream_connector_test.target_writer.write.assert_called()
+    stream_connector_test.target_writer.drain.assert_awaited()
+    stream_connector_test.target_reader.readuntil.assert_called()
+    stream_connector_test.writer.write.assert_not_called()
+    stream_connector_test.writer.drain.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_stream_connector_on_close(stream_connector_test):
+    stream_connector_test.relay.connectors[stream_connector_test.uid] = stream_connector_test
+
+    await stream_connector_test.on_close()
+
+    assert stream_connector_test.uid not in stream_connector_test.relay.connectors

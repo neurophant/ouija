@@ -35,6 +35,18 @@ def datagram_telemetry_test():
 
 
 @pytest.fixture
+def stream_tuning_test(fernet_test, token_test):
+    return StreamTuning(
+        fernet=fernet_test,
+        token=token_test,
+        serving_timeout=3.0,
+        tcp_buffer=1024,
+        tcp_timeout=1.0,
+        message_timeout=2.0,
+    )
+
+
+@pytest.fixture
 def datagram_tuning_test(fernet_test, token_test):
     return DatagramTuning(
         fernet=fernet_test,
@@ -80,6 +92,21 @@ def datagram_ouija_test(datagram_telemetry_test, datagram_tuning_test):
     return DatagramOuijaTest(
         telemetry=datagram_telemetry_test,
         tuning=datagram_tuning_test,
+        remote_host='example.com',
+        remote_port=443,
+    )
+
+
+@pytest.fixture
+def stream_connector_test(stream_telemetry_test, stream_tuning_test):
+    return StreamConnector(
+        telemetry=stream_telemetry_test,
+        tuning=stream_tuning_test,
+        relay=AsyncMock(),
+        reader=AsyncMock(),
+        writer=AsyncMock(),
+        proxy_host='127.0.0.1',
+        proxy_port=50000,
         remote_host='example.com',
         remote_port=443,
     )
