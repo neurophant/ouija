@@ -4,7 +4,17 @@ from cryptography.fernet import Fernet
 
 
 @dataclass(kw_only=True)
-class Tuning:
+class StreamTuning:
+    fernet: Fernet
+    token: str
+    serving_timeout: float
+    tcp_buffer: int
+    tcp_timeout: float
+    message_timeout: float
+
+
+@dataclass(kw_only=True)
+class DatagramTuning:
     fernet: Fernet
     token: str
     serving_timeout: float

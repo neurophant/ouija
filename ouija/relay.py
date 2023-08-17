@@ -1,25 +1,72 @@
 import asyncio
 from typing import Optional
 
-from ..exception import OnOpenError, OnServeError, SendRetryError
-from .telemetry import Telemetry
-from .tuning import Tuning
-from .ouija import Ouija
-from .packet import Packet, Phase
-from ..log import logger
+from .exception import TokenError, OnOpenError, SendRetryError, OnServeError
+from .data import Message, SEPARATOR, CONNECTION_ESTABLISHED, Packet, Phase
+from .log import logger
+from .ouija import StreamOuija, DatagramOuija
+from .telemetry import StreamTelemetry, DatagramTelemetry
+from .tuning import StreamTuning, DatagramTuning
 
 
-class Relay(Ouija, asyncio.DatagramProtocol):
+class StreamRelay(StreamOuija):
+    proxy_host: str
+    proxy_port: int
+
+    def __init__(
+            self,
+            *,
+            telemetry: StreamTelemetry,
+            tuning: StreamTuning,
+            reader: asyncio.StreamReader,
+            writer: asyncio.StreamWriter,
+            proxy_host: str,
+            proxy_port: int,
+            remote_host: str,
+            remote_port: int,
+    ) -> None:
+        self.telemetry = telemetry
+        self.tuning = tuning
+        self.crypt = True
+        self.reader = reader
+        self.writer = writer
+        self.proxy_host = proxy_host
+        self.proxy_port = proxy_port
+        self.remote_host = remote_host
+        self.remote_port = remote_port
+        self.target_reader = None
+        self.target_writer = None
+        self.opened = asyncio.Event()
+        self.sync = asyncio.Event()
+
+    async def on_serve(self) -> None:
+        self.target_reader, self.target_writer = await asyncio.open_connection(self.proxy_host, self.proxy_port)
+
+        message = Message(token=self.tuning.token, host=self.remote_host, port=self.remote_port)
+        data = message.binary(fernet=self.tuning.fernet)
+        self.target_writer.write(data)
+        await self.target_writer.drain()
+
+        data = await asyncio.wait_for(self.target_reader.readuntil(SEPARATOR), self.tuning.message_timeout)
+        message = Message.message(data=data, fernet=self.tuning.fernet)
+        if message.token != self.tuning.token:
+            raise TokenError
+
+        self.writer.write(data=CONNECTION_ESTABLISHED)
+        await self.writer.drain()
+
+
+class DatagramRelay(DatagramOuija, asyncio.DatagramProtocol):
     transport: Optional[asyncio.DatagramTransport]
     proxy_host: str
     proxy_port: int
 
     def __init__(
-            self, 
+            self,
             *,
-            telemetry: Telemetry,
-            tuning: Tuning,
-            reader: asyncio.StreamReader, 
+            telemetry: DatagramTelemetry,
+            tuning: DatagramTuning,
+            reader: asyncio.StreamReader,
             writer: asyncio.StreamWriter,
             proxy_host: str,
             proxy_port: int,
@@ -66,7 +113,7 @@ class Relay(Ouija, asyncio.DatagramProtocol):
         if not packet.ack or self.opened.is_set():
             raise OnOpenError
 
-        self.writer.write(data=b'HTTP/1.1 200 Connection Established\r\n\r\n')
+        self.writer.write(data=CONNECTION_ESTABLISHED)
         await self.writer.drain()
         self.opened.set()
 

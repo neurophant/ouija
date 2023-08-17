@@ -6,7 +6,7 @@ import logging
 
 from cryptography.fernet import Fernet
 
-from ouija import InterfaceUDP as Interface, TuningUDP as Tuning, TelemetryUDP as Telemetry
+from ouija import StreamProxy as Proxy, StreamTelemetry as Telemetry, StreamTuning as Tuning
 
 
 logging.basicConfig(
@@ -23,23 +23,17 @@ async def main() -> None:
         serving_timeout=20.0,
         tcp_buffer=1024,
         tcp_timeout=1.0,
-        udp_payload=1024,
-        udp_timeout=2.0,
-        udp_retries=5,
-        udp_capacity=10000,
-        udp_resend_sleep=0.1,
+        message_timeout=5.0,
     )
-    interface = Interface(
+    proxy = Proxy(
         telemetry=Telemetry(),
         tuning=tuning,
-        proxy_host='127.0.0.1',
-        proxy_port=50000,
     )
-    asyncio.create_task(interface.debug())
+    asyncio.create_task(proxy.debug())
     server = await asyncio.start_server(
-        interface.serve,
-        '127.0.0.1',
-        9000,
+        proxy.serve,
+        '0.0.0.0',
+        50000,
     )
     async with server:
         await server.serve_forever()

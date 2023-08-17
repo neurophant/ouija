@@ -6,7 +6,7 @@ import logging
 
 from cryptography.fernet import Fernet
 
-from ouija import InterfaceTCP as Interface, TuningTCP as Tuning, TelemetryTCP as Telemetry
+from ouija import StreamInterface as Interface, StreamTuning as Tuning, StreamTelemetry as Telemetry
 
 
 logging.basicConfig(

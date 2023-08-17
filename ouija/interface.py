@@ -1,22 +1,30 @@
 import asyncio
 import os
+from typing import Union
 
-from .tuning import Tuning
-from .relay import Relay
-from .telemetry import Telemetry
-from ..rawparser import RawParser
-from ..log import logger
+from .tuning import StreamTuning, DatagramTuning
+from .relay import StreamRelay, DatagramRelay
+from .telemetry import StreamTelemetry, DatagramTelemetry
+from .data import Parser, SEPARATOR
+from .log import logger
 
 
 class Interface:
-    telemetry: Telemetry
-    tuning: Tuning
+    telemetry: Union[StreamTelemetry, DatagramTelemetry]
+    tuning: Union[StreamTuning, DatagramTuning]
     proxy_host: str
     proxy_port: int
     index: int
     sessions: dict[int, asyncio.Task]
 
-    def __init__(self, *, telemetry: Telemetry, tuning: Tuning, proxy_host: str, proxy_port: int) -> None:
+    def __init__(
+            self,
+            *,
+            telemetry: Union[StreamTelemetry, DatagramTelemetry],
+            tuning: Union[StreamTuning, DatagramTuning],
+            proxy_host: str,
+            proxy_port: int,
+    ) -> None:
         self.telemetry = telemetry
         self.tuning = tuning
         self.proxy_host = proxy_host
@@ -32,21 +40,13 @@ class Interface:
             remote_host: str,
             remote_port: int,
     ) -> None:
-        relay = Relay(
-            telemetry=self.telemetry,
-            tuning=self.tuning,
-            reader=reader,
-            writer=writer,
-            proxy_host=self.proxy_host,
-            proxy_port=self.proxy_port,
-            remote_host=remote_host,
-            remote_port=remote_port,
-        )
-        await relay.serve()
+        """HTTPS handler - should be overridden with protocol-oriented implementation
+        :returns: None"""
+        raise NotImplemented
 
     async def session_wrapped(self, *, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
-        data = await reader.readuntil(b'\r\n\r\n')
-        request = RawParser(data=data)
+        data = await reader.readuntil(SEPARATOR)
+        request = Parser(data=data)
         if request.error:
             logger.error('Parse error')
         elif request.method == 'CONNECT':
@@ -71,7 +71,7 @@ class Interface:
             _ = self.sessions.pop(index, None)
 
     async def serve(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
-        """Relay TCP server entry point
+        """HTTPS proxy server entry point
         :returns: None
         """
 
@@ -88,3 +88,47 @@ class Interface:
             self.telemetry.link(links=len(self.sessions))
             os.system('clear')
             print(self.telemetry)
+
+
+class StreamInterface(Interface):
+    async def https_handler(
+            self,
+            *,
+            reader: asyncio.StreamReader,
+            writer: asyncio.StreamWriter,
+            remote_host: str,
+            remote_port: int,
+    ) -> None:
+        relay = StreamRelay(
+            telemetry=self.telemetry,
+            tuning=self.tuning,
+            reader=reader,
+            writer=writer,
+            proxy_host=self.proxy_host,
+            proxy_port=self.proxy_port,
+            remote_host=remote_host,
+            remote_port=remote_port,
+        )
+        await relay.serve()
+
+
+class DatagramInterface(Interface):
+    async def https_handler(
+            self,
+            *,
+            reader: asyncio.StreamReader,
+            writer: asyncio.StreamWriter,
+            remote_host: str,
+            remote_port: int,
+    ) -> None:
+        relay = DatagramRelay(
+            telemetry=self.telemetry,
+            tuning=self.tuning,
+            reader=reader,
+            writer=writer,
+            proxy_host=self.proxy_host,
+            proxy_port=self.proxy_port,
+            remote_host=remote_host,
+            remote_port=remote_port,
+        )
+        await relay.serve()

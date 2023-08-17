@@ -6,7 +6,7 @@ import logging
 
 from cryptography.fernet import Fernet
 
-from ouija import ProxyUDP as Proxy, TelemetryUDP as Telemetry, TuningUDP as Tuning
+from ouija import DatagramProxy as Proxy, DatagramTelemetry as Telemetry, DatagramTuning as Tuning
 
 
 logging.basicConfig(
