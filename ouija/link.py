@@ -1,4 +1,5 @@
 import asyncio
+import uuid
 
 from .exception import TokenError, OnOpenError
 from .data import Message, SEPARATOR, Packet, Phase
@@ -6,23 +7,28 @@ from .ouija import StreamOuija, DatagramOuija
 from .telemetry import StreamTelemetry, DatagramTelemetry
 from .tuning import StreamTuning, DatagramTuning
 
-
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:   # pragma: no cover
-    from proxy import DatagramProxy
+    from proxy import StreamProxy, DatagramProxy
 
 
 class StreamLink(StreamOuija):
+    proxy: 'StreamProxy'
+    uid: str
+
     def __init__(
             self,
             *,
             telemetry: StreamTelemetry,
             tuning: StreamTuning,
+            proxy: 'StreamProxy',
             reader: asyncio.StreamReader,
             writer: asyncio.StreamWriter,
     ) -> None:
         self.telemetry = telemetry
         self.tuning = tuning
+        self.proxy = proxy
+        self.uid = uuid.uuid4().hex
         self.crypt = False
         self.reader = reader
         self.writer = writer
@@ -47,6 +53,11 @@ class StreamLink(StreamOuija):
         data = message.binary(fernet=self.tuning.fernet)
         self.writer.write(data)
         await self.writer.drain()
+
+        self.proxy.links[self.uid] = self
+
+    async def on_close(self) -> None:
+        self.proxy.links.pop(self.uid, None)
 
 
 class DatagramLink(DatagramOuija):
@@ -101,7 +112,6 @@ class DatagramLink(DatagramOuija):
         asyncio.create_task(self.serve())
         self.proxy.links[self.addr] = self
         await self.send_packet(packet=open_ack_packet)
-        return
 
     async def on_serve(self) -> None:   # pragma: no cover
         pass

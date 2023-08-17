@@ -11,42 +11,38 @@ from .log import logger
 class StreamProxy:
     telemetry: StreamTelemetry
     tuning: StreamTuning
-    index: int
-    sessions: dict[int, asyncio.Task]
+    links: dict[str, StreamLink]
 
     def __init__(self, *, telemetry: StreamTelemetry, tuning: StreamTuning) -> None:
         self.telemetry = telemetry
         self.tuning = tuning
-        self.index = 0
-        self.sessions = dict()
+        self.links = dict()
 
-    async def session_wrapped(self, *, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
+    async def link_wrapped(self, *, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
         link = StreamLink(
             telemetry=self.telemetry,
             tuning=self.tuning,
+            proxy=self,
             reader=reader,
             writer=writer,
         )
         await link.serve()
 
-    async def session(self, *, index: int, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
+    async def link(self, *, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
         try:
-            await asyncio.wait_for(self.session_wrapped(reader=reader, writer=writer), self.tuning.serving_timeout * 2)
+            await asyncio.wait_for(self.link_wrapped(reader=reader, writer=writer), self.tuning.serving_timeout * 2)
         except TimeoutError:
             self.telemetry.timeout_error()
         except Exception as e:
             logger.exception(e)
             self.telemetry.serving_error()
-        finally:
-            _ = self.sessions.pop(index, None)
 
     async def serve(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
         """Proxy TCP server entry point
         :returns: None
         """
 
-        self.sessions[self.index] = asyncio.create_task(self.session(index=self.index, reader=reader, writer=writer))
-        self.index += 1
+        asyncio.create_task(self.link(reader=reader, writer=writer))
 
     async def debug(self) -> None:    # pragma: no cover
         """Debug monitor with telemetry output
@@ -55,7 +51,7 @@ class StreamProxy:
 
         while True:
             await asyncio.sleep(1)
-            self.telemetry.link(links=len(self.sessions))
+            self.telemetry.link(links=len(self.links))
             os.system('clear')
             print(self.telemetry)
 

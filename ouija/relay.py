@@ -1,4 +1,5 @@
 import asyncio
+import uuid
 from typing import Optional
 
 from .exception import TokenError, OnOpenError, SendRetryError, OnServeError
@@ -8,8 +9,14 @@ from .ouija import StreamOuija, DatagramOuija
 from .telemetry import StreamTelemetry, DatagramTelemetry
 from .tuning import StreamTuning, DatagramTuning
 
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:   # pragma: no cover
+    from interface import StreamInterface, DatagramInterface
+
 
 class StreamRelay(StreamOuija):
+    interface: 'StreamInterface'
+    uid: str
     proxy_host: str
     proxy_port: int
 
@@ -18,6 +25,7 @@ class StreamRelay(StreamOuija):
             *,
             telemetry: StreamTelemetry,
             tuning: StreamTuning,
+            interface: 'StreamInterface',
             reader: asyncio.StreamReader,
             writer: asyncio.StreamWriter,
             proxy_host: str,
@@ -27,6 +35,8 @@ class StreamRelay(StreamOuija):
     ) -> None:
         self.telemetry = telemetry
         self.tuning = tuning
+        self.interface = interface
+        self.uid = uuid.uuid4().hex
         self.crypt = True
         self.reader = reader
         self.writer = writer
@@ -55,9 +65,16 @@ class StreamRelay(StreamOuija):
         self.writer.write(data=CONNECTION_ESTABLISHED)
         await self.writer.drain()
 
+        self.interface.relays[self.uid] = self
+
+    async def on_close(self) -> None:
+        self.interface.relays.pop(self.uid, None)
+
 
 class DatagramRelay(DatagramOuija, asyncio.DatagramProtocol):
     transport: Optional[asyncio.DatagramTransport]
+    interface: 'DatagramInterface'
+    uid: str
     proxy_host: str
     proxy_port: int
 
@@ -66,6 +83,7 @@ class DatagramRelay(DatagramOuija, asyncio.DatagramProtocol):
             *,
             telemetry: DatagramTelemetry,
             tuning: DatagramTuning,
+            interface: 'DatagramInterface',
             reader: asyncio.StreamReader,
             writer: asyncio.StreamWriter,
             proxy_host: str,
@@ -76,6 +94,8 @@ class DatagramRelay(DatagramOuija, asyncio.DatagramProtocol):
         self.transport = None
         self.telemetry = telemetry
         self.tuning = tuning
+        self.interface = interface
+        self.uid = uuid.uuid4().hex
         self.reader = reader
         self.writer = writer
         self.proxy_host = proxy_host
@@ -116,6 +136,7 @@ class DatagramRelay(DatagramOuija, asyncio.DatagramProtocol):
         self.writer.write(data=CONNECTION_ESTABLISHED)
         await self.writer.drain()
         self.opened.set()
+        self.interface.relays[self.uid] = self
 
     async def on_serve(self) -> None:
         loop = asyncio.get_event_loop()
@@ -136,3 +157,4 @@ class DatagramRelay(DatagramOuija, asyncio.DatagramProtocol):
     async def on_close(self) -> None:
         if isinstance(self.transport, asyncio.DatagramTransport) and not self.transport.is_closing():
             self.transport.close()
+        self.interface.relays.pop(self.uid, None)

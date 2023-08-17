@@ -48,6 +48,12 @@ class StreamOuija:
         self.sync.clear()
 
     async def forward(self, *, reader: asyncio.StreamReader, writer: asyncio.StreamWriter, crypt: bool) -> None:
+        """Forward TCP stream with timeout
+        :param reader: asyncio.StreamReader
+        :param writer: asyncio.StreamWriter
+        :param crypt: bool - on True decrypts read data, on False encrypts data before writing
+        :returns: None"""
+
         try:
             await asyncio.wait_for(
                 self.forward_wrapped(reader=reader, writer=writer, crypt=crypt),
@@ -65,6 +71,9 @@ class StreamOuija:
         await self.close()
 
     async def on_serve(self) -> None:
+        """Hook - executed before serving, should raise TokenError/OnServeError if pre-serve failed
+        :returns: None"""
+
         raise NotImplemented
 
     async def serve_wrapped(self) -> None:
@@ -79,10 +88,15 @@ class StreamOuija:
         )
 
     async def serve(self) -> None:
+        """Serve TCP streams with timeout
+        :returns: None"""
+
         try:
             await asyncio.wait_for(self.serve_wrapped(), self.tuning.serving_timeout)
         except TokenError:
             self.telemetry.token_error()
+        except OnServeError:
+            pass
         except TimeoutError:
             self.telemetry.timeout_error()
         except ConnectionError as e:
@@ -94,12 +108,14 @@ class StreamOuija:
 
         await self.close()
 
+    async def on_close(self) -> None:
+        """Hook - executed on close
+        :returns: None"""
+
+        raise NotImplementedError
+
     async def close(self) -> None:
         self.sync.clear()
-
-        if self.opened.is_set():
-            self.opened.clear()
-            self.telemetry.close()
 
         for writer in (self.target_writer, self.writer):
             if isinstance(writer, asyncio.StreamWriter) and not writer.is_closing():
@@ -108,6 +124,11 @@ class StreamOuija:
                     await writer.wait_closed()
                 except Exception:
                     pass
+
+        if self.opened.is_set():
+            self.opened.clear()
+            self.telemetry.close()
+        await self.on_close()
 
 
 class DatagramOuija:

@@ -51,10 +51,15 @@ class Parser:
         return str(dict(URI=self.uri, HOST=self.host, PORT=self.port, METHOD=self.method))
 
 
-MESSAGE_TOKENS = {
+MAPPING = {
+    'phase': 'pe',
+    'ack': 'ak',
     'token': 'tn',
     'host': 'ht',
     'port': 'pt',
+    'seq': 'sq',
+    'data': 'da',
+    'drain': 'dn',
 }
 
 
@@ -68,13 +73,13 @@ class Message:
     def message(*, data: bytes, fernet: Fernet) -> 'Message':
         json = pbjson.loads(fernet.decrypt(data[:-len(SEPARATOR)]))
         return Message(
-            token=json.get(MESSAGE_TOKENS['token']),
-            host=json.get(MESSAGE_TOKENS['host'], None),
-            port=json.get(MESSAGE_TOKENS['port'], None),
+            token=json.get(MAPPING['token']),
+            host=json.get(MAPPING['host'], None),
+            port=json.get(MAPPING['port'], None),
         )
 
     def binary(self, *, fernet: Fernet) -> bytes:
-        json = {MESSAGE_TOKENS[k]: v for k, v in self.__dict__.items() if v is not None}
+        json = {MAPPING[k]: v for k, v in self.__dict__.items() if v is not None}
         return fernet.encrypt(pbjson.dumps(json)) + SEPARATOR
 
     @staticmethod
@@ -92,18 +97,6 @@ class Phase(IntEnum):
     CLOSE = 3
 
 
-PACKET_TOKENS = {
-    'phase': 'pe',
-    'ack': 'ak',
-    'token': 'tn',
-    'host': 'ht',
-    'port': 'pt',
-    'seq': 'sq',
-    'data': 'da',
-    'drain': 'dn',
-}
-
-
 @dataclass(kw_only=True)
 class Packet:
     phase: Phase
@@ -119,18 +112,18 @@ class Packet:
     def packet(*, data: bytes, fernet: Fernet) -> 'Packet':
         json = pbjson.loads(fernet.decrypt(base64.urlsafe_b64encode(data)))
         return Packet(
-            phase=Phase(json.get(PACKET_TOKENS['phase'])),
-            ack=json.get(PACKET_TOKENS['ack']),
-            token=json.get(PACKET_TOKENS['token'], None),
-            host=json.get(PACKET_TOKENS['host'], None),
-            port=json.get(PACKET_TOKENS['port'], None),
-            seq=json.get(PACKET_TOKENS['seq'], None),
-            data=json.get(PACKET_TOKENS['data'], None),
-            drain=json.get(PACKET_TOKENS['drain'], None),
+            phase=Phase(json.get(MAPPING['phase'])),
+            ack=json.get(MAPPING['ack']),
+            token=json.get(MAPPING['token'], None),
+            host=json.get(MAPPING['host'], None),
+            port=json.get(MAPPING['port'], None),
+            seq=json.get(MAPPING['seq'], None),
+            data=json.get(MAPPING['data'], None),
+            drain=json.get(MAPPING['drain'], None),
         )
 
     def binary(self, *, fernet: Fernet) -> bytes:
-        json = {PACKET_TOKENS[k]: v for k, v in self.__dict__.items() if v is not None}
+        json = {MAPPING[k]: v for k, v in self.__dict__.items() if v is not None}
         return base64.urlsafe_b64decode(fernet.encrypt(pbjson.dumps(json)))
 
 

@@ -14,8 +14,7 @@ class Interface:
     tuning: Union[StreamTuning, DatagramTuning]
     proxy_host: str
     proxy_port: int
-    index: int
-    sessions: dict[int, asyncio.Task]
+    relays: dict[str, Union[StreamRelay, DatagramRelay]]
 
     def __init__(
             self,
@@ -29,8 +28,7 @@ class Interface:
         self.tuning = tuning
         self.proxy_host = proxy_host
         self.proxy_port = proxy_port
-        self.index = 0
-        self.sessions = dict()
+        self.relays = dict()
 
     async def https_handler(
             self,
@@ -44,7 +42,7 @@ class Interface:
         :returns: None"""
         raise NotImplemented
 
-    async def session_wrapped(self, *, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
+    async def relay_wrapped(self, *, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
         data = await reader.readuntil(SEPARATOR)
         request = Parser(data=data)
         if request.error:
@@ -59,24 +57,21 @@ class Interface:
         else:
             logger.error(f'{request.method} method is not supported')
 
-    async def session(self, *, index: int, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
+    async def relay(self, *, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
         try:
-            await asyncio.wait_for(self.session_wrapped(reader=reader, writer=writer), self.tuning.serving_timeout * 2)
+            await asyncio.wait_for(self.relay_wrapped(reader=reader, writer=writer), self.tuning.serving_timeout * 2)
         except TimeoutError:
             self.telemetry.timeout_error()
         except Exception as e:
             logger.exception(e)
             self.telemetry.serving_error()
-        finally:
-            _ = self.sessions.pop(index, None)
 
     async def serve(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
         """HTTPS proxy server entry point
         :returns: None
         """
 
-        self.sessions[self.index] = asyncio.create_task(self.session(index=self.index, reader=reader, writer=writer))
-        self.index += 1
+        asyncio.create_task(self.relay(reader=reader, writer=writer))
 
     async def debug(self) -> None:    # pragma: no cover
         """Debug monitor with telemetry output
@@ -85,7 +80,7 @@ class Interface:
 
         while True:
             await asyncio.sleep(1)
-            self.telemetry.link(links=len(self.sessions))
+            self.telemetry.link(links=len(self.relays))
             os.system('clear')
             print(self.telemetry)
 
@@ -102,6 +97,7 @@ class StreamInterface(Interface):
         relay = StreamRelay(
             telemetry=self.telemetry,
             tuning=self.tuning,
+            interface=self,
             reader=reader,
             writer=writer,
             proxy_host=self.proxy_host,
@@ -124,6 +120,7 @@ class DatagramInterface(Interface):
         relay = DatagramRelay(
             telemetry=self.telemetry,
             tuning=self.tuning,
+            interface=self,
             reader=reader,
             writer=writer,
             proxy_host=self.proxy_host,
