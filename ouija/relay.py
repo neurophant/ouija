@@ -1,160 +1,131 @@
 import asyncio
-import uuid
-from typing import Optional
+import os
+from typing import Union
 
-from .exception import TokenError, OnOpenError, SendRetryError, OnServeError
-from .data import Message, SEPARATOR, CONNECTION_ESTABLISHED, Packet, Phase
-from .log import logger
-from .ouija import StreamOuija, DatagramOuija
-from .telemetry import StreamTelemetry, DatagramTelemetry
 from .tuning import StreamTuning, DatagramTuning
+from .connector import StreamConnector, DatagramConnector
+from .telemetry import StreamTelemetry, DatagramTelemetry
+from .data import Parser, SEPARATOR
+from .log import logger
 
-from typing import TYPE_CHECKING
-if TYPE_CHECKING:   # pragma: no cover
-    from interface import StreamInterface, DatagramInterface
 
-
-class StreamRelay(StreamOuija):
-    interface: 'StreamInterface'
-    uid: str
+class Relay:
+    telemetry: Union[StreamTelemetry, DatagramTelemetry]
+    tuning: Union[StreamTuning, DatagramTuning]
     proxy_host: str
     proxy_port: int
+    connectors: dict[str, Union[StreamConnector, DatagramConnector]]
 
     def __init__(
             self,
             *,
-            telemetry: StreamTelemetry,
-            tuning: StreamTuning,
-            interface: 'StreamInterface',
-            reader: asyncio.StreamReader,
-            writer: asyncio.StreamWriter,
+            telemetry: Union[StreamTelemetry, DatagramTelemetry],
+            tuning: Union[StreamTuning, DatagramTuning],
             proxy_host: str,
             proxy_port: int,
-            remote_host: str,
-            remote_port: int,
     ) -> None:
         self.telemetry = telemetry
         self.tuning = tuning
-        self.interface = interface
-        self.uid = uuid.uuid4().hex
-        self.crypt = True
-        self.reader = reader
-        self.writer = writer
         self.proxy_host = proxy_host
         self.proxy_port = proxy_port
-        self.remote_host = remote_host
-        self.remote_port = remote_port
-        self.target_reader = None
-        self.target_writer = None
-        self.opened = asyncio.Event()
-        self.sync = asyncio.Event()
+        self.connectors = dict()
 
-    async def on_serve(self) -> None:
-        self.target_reader, self.target_writer = await asyncio.open_connection(self.proxy_host, self.proxy_port)
-
-        message = Message(token=self.tuning.token, host=self.remote_host, port=self.remote_port)
-        data = message.binary(fernet=self.tuning.fernet)
-        self.target_writer.write(data)
-        await self.target_writer.drain()
-
-        data = await asyncio.wait_for(self.target_reader.readuntil(SEPARATOR), self.tuning.message_timeout)
-        message = Message.message(data=data, fernet=self.tuning.fernet)
-        if message.token != self.tuning.token:
-            raise TokenError
-
-        self.writer.write(data=CONNECTION_ESTABLISHED)
-        await self.writer.drain()
-
-        self.interface.relays[self.uid] = self
-
-    async def on_close(self) -> None:
-        self.interface.relays.pop(self.uid, None)
-
-
-class DatagramRelay(DatagramOuija, asyncio.DatagramProtocol):
-    transport: Optional[asyncio.DatagramTransport]
-    interface: 'DatagramInterface'
-    uid: str
-    proxy_host: str
-    proxy_port: int
-
-    def __init__(
+    async def https_handler(
             self,
             *,
-            telemetry: DatagramTelemetry,
-            tuning: DatagramTuning,
-            interface: 'DatagramInterface',
             reader: asyncio.StreamReader,
             writer: asyncio.StreamWriter,
-            proxy_host: str,
-            proxy_port: int,
             remote_host: str,
             remote_port: int,
     ) -> None:
-        self.transport = None
-        self.telemetry = telemetry
-        self.tuning = tuning
-        self.interface = interface
-        self.uid = uuid.uuid4().hex
-        self.reader = reader
-        self.writer = writer
-        self.proxy_host = proxy_host
-        self.proxy_port = proxy_port
-        self.remote_host = remote_host
-        self.remote_port = remote_port
-        self.opened = asyncio.Event()
-        self.sync = asyncio.Event()
-        self.sent_buf = dict()
-        self.sent_seq = 0
-        self.read_closed = asyncio.Event()
-        self.recv_buf = dict()
-        self.recv_seq = 0
-        self.write_closed = asyncio.Event()
+        """HTTPS handler - should be overridden with protocol-based implementation
+        :returns: None"""
+        raise NotImplemented
 
-    def connection_made(self, transport) -> None:
-        self.transport = transport
+    async def connect_wrapped(self, *, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
+        data = await reader.readuntil(SEPARATOR)
+        request = Parser(data=data)
+        if request.error:
+            logger.error('Parse error')
+        elif request.method == 'CONNECT':
+            await self.https_handler(
+                reader=reader,
+                writer=writer,
+                remote_host=request.host,
+                remote_port=request.port,
+            )
+        else:
+            logger.error(f'{request.method} method is not supported')
 
-    async def datagram_received_async(self, *, data, addr) -> None:
-        await self.process(data=data)
-
-    def datagram_received(self, data, addr) -> None:
-        asyncio.create_task(self.datagram_received_async(data=data, addr=addr))
-
-    def error_received(self, exc) -> None:
-        logger.error(exc)   # pragma: no cover
-
-    def connection_lost(self, exc) -> None:
-        asyncio.create_task(self.close())
-
-    async def on_send(self, *, data: bytes) -> None:
-        self.transport.sendto(data)
-
-    async def on_open(self, *, packet: Packet) -> None:
-        if not packet.ack or self.opened.is_set():
-            raise OnOpenError
-
-        self.writer.write(data=CONNECTION_ESTABLISHED)
-        await self.writer.drain()
-        self.opened.set()
-        self.interface.relays[self.uid] = self
-
-    async def on_serve(self) -> None:
-        loop = asyncio.get_event_loop()
-        await loop.create_datagram_endpoint(lambda: self, remote_addr=(self.proxy_host, self.proxy_port))
-
-        open_packet = Packet(
-            phase=Phase.OPEN,
-            ack=False,
-            token=self.tuning.token,
-            host=self.remote_host,
-            port=self.remote_port,
-        )
+    async def connect(self, *, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
         try:
-            await self.send_retry(packet=open_packet, event=self.opened)
-        except SendRetryError:
-            raise OnServeError
+            await asyncio.wait_for(self.connect_wrapped(reader=reader, writer=writer), self.tuning.serving_timeout * 2)
+        except TimeoutError:
+            self.telemetry.timeout_error()
+        except Exception as e:
+            logger.exception(e)
+            self.telemetry.serving_error()
 
-    async def on_close(self) -> None:
-        if isinstance(self.transport, asyncio.DatagramTransport) and not self.transport.is_closing():
-            self.transport.close()
-        self.interface.relays.pop(self.uid, None)
+    async def serve(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+        """HTTPS proxy server entry point
+        :returns: None
+        """
+
+        asyncio.create_task(self.connect(reader=reader, writer=writer))
+
+    async def debug(self) -> None:    # pragma: no cover
+        """Debug monitor with telemetry output
+        :returns: None
+        """
+
+        while True:
+            await asyncio.sleep(1)
+            self.telemetry.collect(active=len(self.connectors))
+            os.system('clear')
+            print(self.telemetry)
+
+
+class StreamRelay(Relay):
+    async def https_handler(
+            self,
+            *,
+            reader: asyncio.StreamReader,
+            writer: asyncio.StreamWriter,
+            remote_host: str,
+            remote_port: int,
+    ) -> None:
+        relay = StreamConnector(
+            telemetry=self.telemetry,
+            tuning=self.tuning,
+            relay=self,
+            reader=reader,
+            writer=writer,
+            proxy_host=self.proxy_host,
+            proxy_port=self.proxy_port,
+            remote_host=remote_host,
+            remote_port=remote_port,
+        )
+        await relay.serve()
+
+
+class DatagramRelay(Relay):
+    async def https_handler(
+            self,
+            *,
+            reader: asyncio.StreamReader,
+            writer: asyncio.StreamWriter,
+            remote_host: str,
+            remote_port: int,
+    ) -> None:
+        relay = DatagramConnector(
+            telemetry=self.telemetry,
+            tuning=self.tuning,
+            relay=self,
+            reader=reader,
+            writer=writer,
+            proxy_host=self.proxy_host,
+            proxy_port=self.proxy_port,
+            remote_host=remote_host,
+            remote_port=remote_port,
+        )
+        await relay.serve()

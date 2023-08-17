@@ -6,7 +6,7 @@ import logging
 
 from cryptography.fernet import Fernet
 
-from ouija import DatagramInterface as Interface, DatagramTuning as Tuning, DatagramTelemetry as Telemetry
+from ouija import DatagramRelay as Relay, DatagramTuning as Tuning, DatagramTelemetry as Telemetry
 
 
 logging.basicConfig(
@@ -29,15 +29,15 @@ async def main() -> None:
         udp_capacity=10000,
         udp_resend_sleep=0.1,
     )
-    interface = Interface(
+    relay = Relay(
         telemetry=Telemetry(),
         tuning=tuning,
         proxy_host='127.0.0.1',
         proxy_port=50000,
     )
-    asyncio.create_task(interface.debug())
+    asyncio.create_task(relay.debug())
     server = await asyncio.start_server(
-        interface.serve,
+        relay.serve,
         '127.0.0.1',
         9000,
     )

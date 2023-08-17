@@ -36,16 +36,15 @@ class StreamOuija:
             if data == b'':
                 break
 
+            if not crypt:
+                self.telemetry.recv(data=data)
             data = Message.encrypt(data=data, fernet=self.tuning.fernet) if crypt \
                 else Message.decrypt(data=data, fernet=self.tuning.fernet)
 
             writer.write(data)
             await writer.drain()
-
             if crypt:
                 self.telemetry.send(data=data)
-            else:
-                self.telemetry.recv(data=data)
 
         self.sync.clear()
 

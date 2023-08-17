@@ -7,7 +7,7 @@ from .data import Parser, Message, Phase, Packet
 from .telemetry import StreamTelemetry, DatagramTelemetry
 from .tuning import StreamTuning, DatagramTuning
 from .ouija import StreamOuija, DatagramOuija
-from .relay import StreamRelay, DatagramRelay
+from .connector import StreamConnector, DatagramConnector
 from .link import StreamLink, DatagramLink
-from .interface import StreamInterface, DatagramInterface
+from .relay import StreamRelay, DatagramRelay
 from .proxy import StreamProxy, DatagramProxy
