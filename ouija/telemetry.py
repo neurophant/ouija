@@ -4,7 +4,7 @@ import datetime
 
 @dataclass(kw_only=True)
 class StreamTelemetry:
-    links: int = 0
+    active: int = 0
     opened: int = 0
     closed: int = 0
     bytes_sent: int = 0
@@ -17,14 +17,14 @@ class StreamTelemetry:
     def __str__(self) -> str:
         return \
             f'{datetime.datetime.now()}\n' \
-            f'\tlinks: {self.links:,}\n' \
+            f'\tactive: {self.active:,}\n' \
             f'\topened|closed: {self.opened:,}|{self.closed:,}\n' \
             f'\tbytes sent|received: {self.bytes_sent:,}|{self.bytes_recv:,}\n' \
             f'\ttoken|timeout|connection|serving errors: {self.token_errors:,}|{self.timeout_errors:,}' \
             f'|{self.connection_errors:,}|{self.serving_errors:,}'
 
-    def link(self, *, links: int) -> None:
-        self.links = links
+    def collect(self, *, active: int) -> None:
+        self.active = active
 
     def open(self) -> None:
         self.opened += 1
@@ -53,7 +53,7 @@ class StreamTelemetry:
 
 @dataclass(kw_only=True)
 class DatagramTelemetry:
-    links: int = 0
+    active: int = 0
     opened: int = 0
     closed: int = 0
     packets_sent: int = 0
@@ -75,7 +75,7 @@ class DatagramTelemetry:
     def __str__(self) -> str:
         return \
             f'{datetime.datetime.now()}\n' \
-            f'\tlinks: {self.links:,}\n' \
+            f'\tactive: {self.active:,}\n' \
             f'\topened|closed: {self.opened:,}|{self.closed:,}\n' \
             f'\tpackets sent|received: {self.packets_sent:,}|{self.packets_recv:,}\n' \
             f'\tbytes sent|received: {self.bytes_sent:,}|{self.bytes_recv:,}\n' \
@@ -86,8 +86,8 @@ class DatagramTelemetry:
             f'|{self.serving_errors:,}|{self.resending_errors:,}\n' \
             f'\tsend|recv buf overloads: {self.send_buf_overloads:,}|{self.recv_buf_overloads:,}'
 
-    def link(self, *, links: int) -> None:
-        self.links = links
+    def collect(self, *, active: int) -> None:
+        self.active = active
 
     def open(self) -> None:
         self.opened += 1

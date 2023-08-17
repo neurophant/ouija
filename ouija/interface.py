@@ -38,7 +38,7 @@ class Interface:
             remote_host: str,
             remote_port: int,
     ) -> None:
-        """HTTPS handler - should be overridden with protocol-oriented implementation
+        """HTTPS handler - should be overridden with protocol-based implementation
         :returns: None"""
         raise NotImplemented
 
@@ -80,7 +80,7 @@ class Interface:
 
         while True:
             await asyncio.sleep(1)
-            self.telemetry.link(links=len(self.relays))
+            self.telemetry.collect(active=len(self.relays))
             os.system('clear')
             print(self.telemetry)
 

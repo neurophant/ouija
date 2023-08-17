@@ -1,6 +1,6 @@
 import asyncio
 import os
-from typing import Optional
+from typing import Optional, Union
 
 from .link import StreamLink, DatagramLink
 from .tuning import StreamTuning, DatagramTuning
@@ -8,11 +8,29 @@ from .telemetry import StreamTelemetry, DatagramTelemetry
 from .log import logger
 
 
-class StreamProxy:
-    telemetry: StreamTelemetry
-    tuning: StreamTuning
-    links: dict[str, StreamLink]
+class Proxy:
+    telemetry: Union[StreamTelemetry, DatagramTelemetry]
+    tuning: Union[StreamTuning, DatagramTuning]
+    links: Union[dict[str, StreamLink], dict[tuple[str, int], DatagramLink]]
 
+    async def serve(self, *args, **kwargs) -> None:
+        """Proxy server entry point - should be overridden with protocol-based implementation
+        :returns: None"""
+        raise NotImplemented
+
+    async def debug(self) -> None:    # pragma: no cover
+        """Debug monitor with telemetry output
+        :returns: None
+        """
+
+        while True:
+            await asyncio.sleep(1)
+            self.telemetry.collect(active=len(self.links))
+            os.system('clear')
+            print(self.telemetry)
+
+
+class StreamProxy(Proxy):
     def __init__(self, *, telemetry: StreamTelemetry, tuning: StreamTuning) -> None:
         self.telemetry = telemetry
         self.tuning = tuning
@@ -38,31 +56,13 @@ class StreamProxy:
             self.telemetry.serving_error()
 
     async def serve(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
-        """Proxy TCP server entry point
-        :returns: None
-        """
-
         asyncio.create_task(self.link(reader=reader, writer=writer))
 
-    async def debug(self) -> None:    # pragma: no cover
-        """Debug monitor with telemetry output
-        :returns: None
-        """
 
-        while True:
-            await asyncio.sleep(1)
-            self.telemetry.link(links=len(self.links))
-            os.system('clear')
-            print(self.telemetry)
-
-
-class DatagramProxy(asyncio.DatagramProtocol):
+class DatagramProxy(Proxy, asyncio.DatagramProtocol):
     transport: Optional[asyncio.DatagramTransport]
-    telemetry: DatagramTelemetry
-    tuning: DatagramTuning
     proxy_host: str
     proxy_port: int
-    links: dict[tuple[str, int], DatagramLink]
 
     def __init__(
             self,
@@ -97,20 +97,5 @@ class DatagramProxy(asyncio.DatagramProtocol):
         logger.error(exc)
 
     async def serve(self) -> None:
-        """Proxy UDP server entry point
-        :returns: None
-        """
-
         loop = asyncio.get_event_loop()
         await loop.create_datagram_endpoint(lambda: self, local_addr=(self.proxy_host, self.proxy_port))
-
-    async def debug(self) -> None:    # pragma: no cover
-        """Debug monitor with telemetry output
-        :returns: None
-        """
-
-        while True:
-            await asyncio.sleep(1)
-            self.telemetry.link(links=len(self.links))
-            os.system('clear')
-            print(self.telemetry)
