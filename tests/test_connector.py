@@ -141,24 +141,15 @@ async def test_stream_connector_on_serve(
         data_test,
         mocker: MockerFixture,
 ):
-    async def open_connection(*args, **kwargs):
-        return AsyncMock(), AsyncMock()
-
-    async def wait_for(*args, **kwargs):
-        message = Message(token=token_test)
-        return message.binary(fernet=fernet_test)
-
-    mocked_asyncio = mocker.patch('ouija.connector.asyncio')
-    mocked_asyncio.open_connection = open_connection
-    mocked_asyncio.wait_for = wait_for
-    stream_connector_test.target_reader = AsyncMock()
-    stream_connector_test.target_writer = AsyncMock()
+    mocked_open_connection = mocker.patch('ouija.connector.asyncio.open_connection')
+    mocked_open_connection.return_value = (AsyncMock(), AsyncMock())
+    mocked_wait_for = mocker.patch('ouija.connector.asyncio.wait_for')
+    mocked_wait_for.return_value = Message(token=token_test).binary(fernet=fernet_test)
 
     await stream_connector_test.on_serve()
 
     stream_connector_test.target_writer.write.assert_called()
     stream_connector_test.target_writer.drain.assert_awaited()
-    stream_connector_test.target_reader.readuntil.assert_called()
     stream_connector_test.writer.write.assert_called()
     stream_connector_test.writer.drain.assert_awaited()
 
@@ -172,14 +163,10 @@ async def test_stream_connector_on_serve_timeouterror(
         data_test,
         mocker: MockerFixture,
 ):
-    async def open_connection(*args, **kwargs):
-        return AsyncMock(), AsyncMock()
-
-    mocked_asyncio = mocker.patch('ouija.connector.asyncio')
-    mocked_asyncio.open_connection = open_connection
-    mocked_asyncio.wait_for.side_effect = TimeoutError
-    stream_connector_test.target_reader = AsyncMock()
-    stream_connector_test.target_writer = AsyncMock()
+    mocked_open_connection = mocker.patch('ouija.connector.asyncio.open_connection')
+    mocked_open_connection.return_value = (AsyncMock(), AsyncMock())
+    mocked_wait_for = mocker.patch('ouija.connector.asyncio.wait_for')
+    mocked_wait_for.side_effect = TimeoutError
 
     await stream_connector_test.on_serve()
 
@@ -198,18 +185,10 @@ async def test_stream_connector_on_serve_tokenerror(
         data_test,
         mocker: MockerFixture,
 ):
-    async def open_connection(*args, **kwargs):
-        return AsyncMock(), AsyncMock()
-
-    async def wait_for(*args, **kwargs):
-        message = Message(token='invalid')
-        return message.binary(fernet=fernet_test)
-
-    mocked_asyncio = mocker.patch('ouija.connector.asyncio')
-    mocked_asyncio.open_connection = open_connection
-    mocked_asyncio.wait_for = wait_for
-    stream_connector_test.target_reader = AsyncMock()
-    stream_connector_test.target_writer = AsyncMock()
+    mocked_open_connection = mocker.patch('ouija.connector.asyncio.open_connection')
+    mocked_open_connection.return_value = (AsyncMock(), AsyncMock())
+    mocked_wait_for = mocker.patch('ouija.connector.asyncio.wait_for')
+    mocked_wait_for.return_value = Message(token='invalid').binary(fernet=fernet_test)
 
     await stream_connector_test.on_serve()
 

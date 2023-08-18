@@ -128,6 +128,17 @@ def datagram_connector_test(datagram_telemetry_test, datagram_tuning_test):
 
 
 @pytest.fixture
+def stream_link_test(stream_telemetry_test, stream_tuning_test):
+    return StreamLink(
+        telemetry=stream_telemetry_test,
+        tuning=stream_tuning_test,
+        proxy=AsyncMock(),
+        reader=AsyncMock(),
+        writer=AsyncMock(),
+    )
+
+
+@pytest.fixture
 def datagram_link_test(datagram_telemetry_test, datagram_tuning_test):
     return DatagramLink(
         telemetry=datagram_telemetry_test,

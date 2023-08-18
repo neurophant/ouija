@@ -29,7 +29,7 @@ class StreamOuija:
                     else await asyncio.wait_for(reader.readuntil(SEPARATOR), self.tuning.message_timeout)
             except TimeoutError:
                 continue
-            except EOFError:
+            except asyncio.IncompleteReadError:
                 break
 
             if not data:

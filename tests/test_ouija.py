@@ -505,7 +505,7 @@ async def test_datagram_ouija_serve_wrapped_empty(datagram_ouija_test, data_test
 @pytest.mark.xfail(raises=BufOverloadError)
 async def test_datagram_ouija_serve_wrapped_bufoverloaderror(datagram_ouija_test, data_test):
     async def resetter():
-        await asyncio.sleep(3)
+        await asyncio.sleep(2)
         datagram_ouija_test.sync.clear()
 
     async def read(*args, **kwargs):
