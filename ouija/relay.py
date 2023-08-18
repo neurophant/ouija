@@ -40,7 +40,7 @@ class Relay:
     ) -> None:
         """HTTPS handler - should be overridden with protocol-based implementation
         :returns: None"""
-        raise NotImplemented
+        raise NotImplementedError
 
     async def connect_wrapped(self, *, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
         data = await reader.readuntil(SEPARATOR)

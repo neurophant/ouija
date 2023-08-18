@@ -16,7 +16,7 @@ class Proxy:
     async def serve(self, *args, **kwargs) -> None:
         """Proxy server entry point - should be overridden with protocol-based implementation
         :returns: None"""
-        raise NotImplemented
+        raise NotImplementedError
 
     async def debug(self) -> None:    # pragma: no cover
         """Debug monitor with telemetry output

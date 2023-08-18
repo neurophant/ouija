@@ -67,7 +67,6 @@ async def test_datagram_relay_connect(datagram_relay_test):
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(raises=TimeoutError)
 async def test_datagram_relay_connect_timeouterror(datagram_relay_test):
     datagram_relay_test.connect_wrapped = AsyncMock()
     datagram_relay_test.connect_wrapped.side_effect = TimeoutError()
@@ -78,7 +77,6 @@ async def test_datagram_relay_connect_timeouterror(datagram_relay_test):
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(raises=Exception)
 async def test_datagram_relay_session_exception(datagram_relay_test):
     datagram_relay_test.connect_wrapped = AsyncMock()
     datagram_relay_test.connect_wrapped.side_effect = Exception()

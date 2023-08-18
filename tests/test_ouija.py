@@ -2,6 +2,7 @@ import asyncio
 from unittest.mock import AsyncMock
 
 import pytest
+from pytest_mock import MockerFixture
 
 from ouija import Packet, Phase
 from ouija.exception import SendRetryError, TokenError, OnOpenError, OnServeError, BufOverloadError
@@ -742,7 +743,6 @@ async def test_stream_ouija_forward_wrapped_empty(stream_ouija_test, data_test, 
 @pytest.mark.asyncio
 async def test_stream_ouija_forward(stream_ouija_test):
     stream_ouija_test.forward_wrapped = AsyncMock()
-    stream_ouija_test.on_close = AsyncMock()
     stream_ouija_test.close = AsyncMock()
 
     await stream_ouija_test.forward(reader=stream_ouija_test.reader, writer=stream_ouija_test.target_writer, crypt=True)
@@ -755,7 +755,6 @@ async def test_stream_ouija_forward(stream_ouija_test):
 async def test_stream_ouija_forward_timeouterror(stream_ouija_test):
     stream_ouija_test.forward_wrapped = AsyncMock()
     stream_ouija_test.forward_wrapped.side_effect = TimeoutError()
-    stream_ouija_test.on_close = AsyncMock()
     stream_ouija_test.close = AsyncMock()
 
     await stream_ouija_test.forward(reader=stream_ouija_test.reader, writer=stream_ouija_test.target_writer, crypt=True)
@@ -768,7 +767,6 @@ async def test_stream_ouija_forward_timeouterror(stream_ouija_test):
 async def test_stream_ouija_forward_connectionerror(stream_ouija_test):
     stream_ouija_test.forward_wrapped = AsyncMock()
     stream_ouija_test.forward_wrapped.side_effect = ConnectionError()
-    stream_ouija_test.on_close = AsyncMock()
     stream_ouija_test.close = AsyncMock()
 
     await stream_ouija_test.forward(reader=stream_ouija_test.reader, writer=stream_ouija_test.target_writer, crypt=True)
@@ -781,10 +779,147 @@ async def test_stream_ouija_forward_connectionerror(stream_ouija_test):
 async def test_stream_ouija_forward_exception(stream_ouija_test):
     stream_ouija_test.forward_wrapped = AsyncMock()
     stream_ouija_test.forward_wrapped.side_effect = Exception()
-    stream_ouija_test.on_close = AsyncMock()
     stream_ouija_test.close = AsyncMock()
 
     await stream_ouija_test.forward(reader=stream_ouija_test.reader, writer=stream_ouija_test.target_writer, crypt=True)
 
     stream_ouija_test.forward_wrapped.assert_called()
     stream_ouija_test.close.assert_awaited()
+
+
+@pytest.mark.asyncio
+@pytest.mark.xfail(raises=NotImplementedError)
+async def test_stream_ouija_on_serve(stream_ouija_test):
+    await stream_ouija_test.on_serve()
+
+
+@pytest.mark.asyncio
+async def test_stream_ouija_serve_wrapped(stream_ouija_test, data_test):
+    stream_ouija_test.on_serve = AsyncMock()
+    stream_ouija_test.forward = AsyncMock()
+
+    await stream_ouija_test.serve_wrapped()
+
+    stream_ouija_test.on_serve.assert_awaited()
+    assert stream_ouija_test.opened.is_set()
+    assert stream_ouija_test.sync.is_set()
+
+
+@pytest.mark.asyncio
+async def test_stream_ouija_serve(stream_ouija_test):
+    stream_ouija_test.serve_wrapped = AsyncMock()
+    stream_ouija_test.close = AsyncMock()
+
+    await stream_ouija_test.serve()
+
+    stream_ouija_test.serve_wrapped.assert_awaited()
+    stream_ouija_test.close.assert_awaited()
+
+
+@pytest.mark.asyncio
+async def test_stream_ouija_serve_tokenerror(stream_ouija_test):
+    stream_ouija_test.serve_wrapped = AsyncMock()
+    stream_ouija_test.serve_wrapped.side_effect = TokenError()
+    stream_ouija_test.close = AsyncMock()
+
+    await stream_ouija_test.serve()
+
+    stream_ouija_test.serve_wrapped.assert_awaited()
+    stream_ouija_test.close.assert_awaited()
+
+
+@pytest.mark.asyncio
+async def test_stream_ouija_serve_onserveerror(stream_ouija_test):
+    stream_ouija_test.serve_wrapped = AsyncMock()
+    stream_ouija_test.serve_wrapped.side_effect = OnServeError()
+    stream_ouija_test.close = AsyncMock()
+
+    await stream_ouija_test.serve()
+
+    stream_ouija_test.serve_wrapped.assert_awaited()
+    stream_ouija_test.close.assert_awaited()
+
+
+@pytest.mark.asyncio
+async def test_stream_ouija_serve_timeouterror(stream_ouija_test):
+    stream_ouija_test.serve_wrapped = AsyncMock()
+    stream_ouija_test.serve_wrapped.side_effect = TimeoutError()
+    stream_ouija_test.close = AsyncMock()
+
+    await stream_ouija_test.serve()
+
+    stream_ouija_test.serve_wrapped.assert_awaited()
+    stream_ouija_test.close.assert_awaited()
+
+
+@pytest.mark.asyncio
+async def test_stream_ouija_serve_connectionerror(stream_ouija_test):
+    stream_ouija_test.serve_wrapped = AsyncMock()
+    stream_ouija_test.serve_wrapped.side_effect = ConnectionError()
+    stream_ouija_test.close = AsyncMock()
+
+    await stream_ouija_test.serve()
+
+    stream_ouija_test.serve_wrapped.assert_awaited()
+    stream_ouija_test.close.assert_awaited()
+
+
+@pytest.mark.asyncio
+async def test_stream_ouija_serve_exception(stream_ouija_test):
+    stream_ouija_test.serve_wrapped = AsyncMock()
+    stream_ouija_test.serve_wrapped.side_effect = Exception()
+    stream_ouija_test.close = AsyncMock()
+
+    await stream_ouija_test.serve()
+
+    stream_ouija_test.serve_wrapped.assert_awaited()
+    stream_ouija_test.close.assert_awaited()
+
+
+@pytest.mark.asyncio
+@pytest.mark.xfail(raises=NotImplementedError)
+async def test_stream_ouija_on_close(stream_ouija_test):
+    await stream_ouija_test.on_close()
+
+
+@pytest.mark.asyncio
+async def test_stream_ouija_close(stream_ouija_test):
+    stream_ouija_test.opened.set()
+    stream_ouija_test.sync.set()
+    stream_ouija_test.writer = AsyncMock(spec=asyncio.StreamWriter)
+    stream_ouija_test.writer.is_closing = lambda: False
+    stream_ouija_test.target_writer = AsyncMock(spec=asyncio.StreamWriter)
+    stream_ouija_test.target_writer.is_closing = lambda: False
+    stream_ouija_test.on_close = AsyncMock()
+
+    await stream_ouija_test.close()
+
+    assert not stream_ouija_test.opened.is_set()
+    assert not stream_ouija_test.sync.is_set()
+    stream_ouija_test.writer.close.assert_called()
+    stream_ouija_test.writer.wait_closed.assert_awaited()
+    stream_ouija_test.target_writer.close.assert_called()
+    stream_ouija_test.target_writer.wait_closed.assert_awaited()
+    stream_ouija_test.on_close.assert_awaited()
+
+
+@pytest.mark.asyncio
+async def test_stream_ouija_close_writer_exception(stream_ouija_test):
+    stream_ouija_test.opened.set()
+    stream_ouija_test.sync.set()
+    stream_ouija_test.writer = AsyncMock(spec=asyncio.StreamWriter)
+    stream_ouija_test.writer.is_closing = lambda: False
+    stream_ouija_test.writer.close.side_effect = Exception()
+    stream_ouija_test.target_writer = AsyncMock(spec=asyncio.StreamWriter)
+    stream_ouija_test.target_writer.is_closing = lambda: False
+    stream_ouija_test.on_close = AsyncMock()
+
+    await stream_ouija_test.close()
+
+    assert not stream_ouija_test.opened.is_set()
+    assert not stream_ouija_test.sync.is_set()
+    stream_ouija_test.writer.close.assert_called()
+    stream_ouija_test.writer.wait_closed.assert_not_awaited()
+    stream_ouija_test.target_writer.close.assert_called()
+    stream_ouija_test.target_writer.wait_closed.assert_awaited()
+    stream_ouija_test.on_close.assert_awaited()

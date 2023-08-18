@@ -74,7 +74,7 @@ class StreamOuija:
         """Hook - executed before serving, should raise TokenError/OnServeError if pre-serve failed
         :returns: None"""
 
-        raise NotImplemented
+        raise NotImplementedError
 
     async def serve_wrapped(self) -> None:
         await self.on_serve()
