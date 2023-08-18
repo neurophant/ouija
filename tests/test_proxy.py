@@ -3,6 +3,65 @@ from unittest.mock import Mock, AsyncMock
 import pytest
 from pytest_mock import MockerFixture
 
+from ouija.proxy import Proxy
+
+
+@pytest.mark.asyncio
+@pytest.mark.xfail(raises=NotImplementedError)
+async def test_proxy_serve():
+    proxy = Proxy()
+
+    await proxy.serve()
+
+
+@pytest.mark.asyncio
+async def test_stream_proxy_link_wrapped(stream_proxy_test, stream_link_test,  mocker: MockerFixture):
+    mocked_stream_link = mocker.patch('ouija.proxy.StreamLink')
+    mocked_stream_link.return_value = stream_link_test
+    stream_link_test.serve = AsyncMock()
+
+    await stream_proxy_test.link_wrapped(reader=AsyncMock(), writer=AsyncMock())
+
+    stream_link_test.serve.assert_awaited()
+
+
+@pytest.mark.asyncio
+async def test_stream_proxy_link(stream_proxy_test):
+    stream_proxy_test.link_wrapped = AsyncMock()
+
+    await stream_proxy_test.link(reader=AsyncMock(), writer=AsyncMock())
+
+    stream_proxy_test.link_wrapped.assert_awaited()
+
+
+@pytest.mark.asyncio
+async def test_stream_proxy_link_timeouterror(stream_proxy_test):
+    stream_proxy_test.link_wrapped = AsyncMock()
+    stream_proxy_test.link_wrapped.side_effect = TimeoutError()
+
+    await stream_proxy_test.link(reader=AsyncMock(), writer=AsyncMock())
+
+    stream_proxy_test.link_wrapped.assert_awaited()
+
+
+@pytest.mark.asyncio
+async def test_stream_proxy_link_exception(stream_proxy_test):
+    stream_proxy_test.link_wrapped = AsyncMock()
+    stream_proxy_test.link_wrapped.side_effect = Exception()
+
+    await stream_proxy_test.link(reader=AsyncMock(), writer=AsyncMock())
+
+    stream_proxy_test.link_wrapped.assert_awaited()
+
+
+@pytest.mark.asyncio
+async def test_stream_proxy_serve(stream_proxy_test):
+    stream_proxy_test.link = AsyncMock()
+
+    await stream_proxy_test.serve(reader=AsyncMock(), writer=AsyncMock())
+
+    stream_proxy_test.link.assert_called()
+
 
 def test_datagram_proxy_connection_made(datagram_proxy_test):
     mock = Mock()
