@@ -19,21 +19,37 @@ Features
 
 Hides TCP traffic in encrypted TCP/UDP traffic between relay and proxy servers
 
-.. image:: https://raw.githubusercontent.com/neurophant/ouija/main/ouija.png
-    :alt: UDP tunneling
+.. image:: https://raw.githubusercontent.com/neurophant/ouija/1.2.0/ouija.png
+    :alt: TCP/UDP tunneling
     :width: 800
 
-Key entities
+Protocols
+---------
+
+* Stream - TCP
+* Datagram - UDP
+
+Entities
+--------
+
+* Tuning - relay-proxy interaction settings
+* Relay - HTTPS proxy server interface
+* Connector - relay connector, which communicates with proxy link
+* Proxy - proxy server, which gets requests from relay and sends back responses from remote servers
+* Link - proxy link with relay connector
+
+Tuning - TCP
 ------------
 
-* Tuning - Relay-Proxy interaction settings
-* Interface - HTTPS proxy server interface
-* Relay - HTTPS proxy relay, which communicates with Proxy via encrypted UDP
-* Proxy - UDP server, which gets requests from Relay and sends back responses from remote TCP servers
-* Link - Relay link within Proxy
+* fernet - Fernet instance with provided secret key - use Fernet.generate_key()
+* token - your secret token - UUID4 or anything else
+* serving_timeout - timeout for serve/resend workers, 2X for handlers, seconds
+* tcp_buffer - TCP buffer size, bytes
+* tcp_timeout - TCP awaiting timeout, seconds
+* message_timeout - TCP service message timeout, seconds
 
-Tuning
-------
+Tuning - UDP
+------------
 
 * fernet - Fernet instance with provided secret key - use Fernet.generate_key()
 * token - your secret token - UUID4 or anything else
@@ -65,7 +81,7 @@ Setup
 Usage
 -----
 
-ouija-relay - HTTPS proxy server interface:
+ouija-stream-relay - HTTPS proxy server interface with TCP connectors:
 
 .. code-block:: python
 
@@ -73,31 +89,27 @@ ouija-relay - HTTPS proxy server interface:
 
     from cryptography.fernet import Fernet
 
-    from ouija import Interface, Tuning, Telemetry
+    from ouija import StreamRelay as Relay, StreamTuning as Tuning, StreamTelemetry as Telemetry
 
 
     async def main() -> None:
         tuning = Tuning(
             fernet=Fernet('bdDmN4VexpDvTrs6gw8xTzaFvIBobFg1Cx2McFB1RmI='),
             token='secret',
-            serving_timeout=30.0,
-            tcp_buffer=2048,
+            serving_timeout=20.0,
+            tcp_buffer=1024,
             tcp_timeout=1.0,
-            udp_payload=1024,
-            udp_timeout=3.0,
-            udp_retries=5,
-            udp_capacity=1000,
-            udp_resend_sleep=0.5,
+            message_timeout=5.0,
         )
-        interface = Interface(
+        relay = Relay(
             telemetry=Telemetry(),
             tuning=tuning,
             proxy_host='127.0.0.1',
             proxy_port=50000,
         )
-        asyncio.create_task(interface.debug())
+        asyncio.create_task(relay.debug())
         server = await asyncio.start_server(
-            interface.serve,
+            relay.serve,
             '127.0.0.1',
             9000,
         )
@@ -110,7 +122,7 @@ ouija-relay - HTTPS proxy server interface:
         loop.run_until_complete(main())
         loop.run_forever()
 
-ouija-proxy - UDP-relayed TCP proxy server:
+ouija-stream-proxy - TCP-relayed proxy server:
 
 .. code-block:: python
 
@@ -118,21 +130,105 @@ ouija-proxy - UDP-relayed TCP proxy server:
 
     from cryptography.fernet import Fernet
 
-    from ouija import Proxy, Telemetry, Tuning
+    from ouija import StreamProxy as Proxy, StreamTelemetry as Telemetry, StreamTuning as Tuning
 
 
     async def main() -> None:
         tuning = Tuning(
             fernet=Fernet('bdDmN4VexpDvTrs6gw8xTzaFvIBobFg1Cx2McFB1RmI='),
             token='secret',
-            serving_timeout=30.0,
-            tcp_buffer=2048,
+            serving_timeout=20.0,
+            tcp_buffer=1024,
+            tcp_timeout=1.0,
+            message_timeout=5.0,
+        )
+        proxy = Proxy(
+            telemetry=Telemetry(),
+            tuning=tuning,
+        )
+        asyncio.create_task(proxy.debug())
+        server = await asyncio.start_server(
+            proxy.serve,
+            '0.0.0.0',
+            50000,
+        )
+        async with server:
+            await server.serve_forever()
+
+
+    if __name__ == '__main__':
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(main())
+        loop.run_forever()
+
+ouija-datagram-relay - HTTPS proxy server interface with UDP connectors:
+
+.. code-block:: python
+
+    import asyncio
+
+    from cryptography.fernet import Fernet
+
+    from ouija import DatagramRelay as Relay, DatagramTuning as Tuning, DatagramTelemetry as Telemetry
+
+
+    async def main() -> None:
+        tuning = Tuning(
+            fernet=Fernet('bdDmN4VexpDvTrs6gw8xTzaFvIBobFg1Cx2McFB1RmI='),
+            token='secret',
+            serving_timeout=20.0,
+            tcp_buffer=1024,
             tcp_timeout=1.0,
             udp_payload=1024,
-            udp_timeout=3.0,
+            udp_timeout=2.0,
             udp_retries=5,
-            udp_capacity=1000,
-            udp_resend_sleep=0.5,
+            udp_capacity=10000,
+            udp_resend_sleep=0.1,
+        )
+        relay = Relay(
+            telemetry=Telemetry(),
+            tuning=tuning,
+            proxy_host='127.0.0.1',
+            proxy_port=50000,
+        )
+        asyncio.create_task(relay.debug())
+        server = await asyncio.start_server(
+            relay.serve,
+            '127.0.0.1',
+            9000,
+        )
+        async with server:
+            await server.serve_forever()
+
+
+    if __name__ == '__main__':
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(main())
+        loop.run_forever()
+
+ouija-datagram-proxy - UDP-relayed proxy server:
+
+.. code-block:: python
+
+    import asyncio
+
+    from cryptography.fernet import Fernet
+
+    from ouija import DatagramProxy as Proxy, DatagramTelemetry as Telemetry, DatagramTuning as Tuning
+
+
+    async def main() -> None:
+        tuning = Tuning(
+            fernet=Fernet('bdDmN4VexpDvTrs6gw8xTzaFvIBobFg1Cx2McFB1RmI='),
+            token='secret',
+            serving_timeout=20.0,
+            tcp_buffer=1024,
+            tcp_timeout=1.0,
+            udp_payload=1024,
+            udp_timeout=2.0,
+            udp_retries=5,
+            udp_capacity=10000,
+            udp_resend_sleep=0.1,
         )
         proxy = Proxy(
             telemetry=Telemetry(),
