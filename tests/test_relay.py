@@ -13,7 +13,9 @@ async def test_relay_https_handler(stream_telemetry_test, stream_tuning_test):
     relay = Relay(
         telemetry=stream_telemetry_test,
         tuning=stream_tuning_test,
-        proxy_host='example.com',
+        relay_host='127.0.0.1',
+        relay_port=9000,
+        proxy_host='127.0.0.1',
         proxy_port=50000,
     )
 
@@ -117,9 +119,19 @@ async def test_relay_session_exception(datagram_relay_test):
 
 
 @pytest.mark.asyncio
-async def test_relay_serve(datagram_relay_test):
+async def test_relay_handle(datagram_relay_test):
     datagram_relay_test.connect = AsyncMock()
 
-    await datagram_relay_test.serve(reader=AsyncMock(), writer=AsyncMock())
+    await datagram_relay_test.handle(reader=AsyncMock(), writer=AsyncMock())
 
     datagram_relay_test.connect.assert_called()
+
+
+@pytest.mark.asyncio
+async def test_relay_serve(datagram_relay_test, mocker: MockerFixture):
+    mocked_asyncio = mocker.patch('ouija.relay.asyncio')
+    mocked_asyncio.start_server = AsyncMock()
+
+    await datagram_relay_test.serve()
+
+    mocked_asyncio.start_server.assert_awaited()

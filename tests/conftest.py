@@ -185,6 +185,8 @@ def stream_relay_test(stream_telemetry_test, stream_tuning_test):
     return StreamRelay(
         telemetry=stream_telemetry_test,
         tuning=stream_tuning_test,
+        relay_host='127.0.0.1',
+        relay_port=9000,
         proxy_host='127.0.0.1',
         proxy_port=50000,
     )
@@ -195,6 +197,8 @@ def datagram_relay_test(datagram_telemetry_test, datagram_tuning_test):
     return DatagramRelay(
         telemetry=datagram_telemetry_test,
         tuning=datagram_tuning_test,
+        relay_host='127.0.0.1',
+        relay_port=9000,
         proxy_host='127.0.0.1',
         proxy_port=50000,
     )
@@ -205,6 +209,8 @@ def stream_proxy_test(stream_telemetry_test, stream_tuning_test):
     return StreamProxy(
         telemetry=stream_telemetry_test,
         tuning=stream_tuning_test,
+        proxy_host='0.0.0.0',
+        proxy_port=50000,
     )
 
 

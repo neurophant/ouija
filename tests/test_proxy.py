@@ -55,12 +55,22 @@ async def test_stream_proxy_link_exception(stream_proxy_test):
 
 
 @pytest.mark.asyncio
-async def test_stream_proxy_serve(stream_proxy_test):
+async def test_stream_proxy_handle(stream_proxy_test):
     stream_proxy_test.link = AsyncMock()
 
-    await stream_proxy_test.serve(reader=AsyncMock(), writer=AsyncMock())
+    await stream_proxy_test.handle(reader=AsyncMock(), writer=AsyncMock())
 
     stream_proxy_test.link.assert_called()
+
+
+@pytest.mark.asyncio
+async def test_stream_proxy_serve(stream_proxy_test, mocker: MockerFixture):
+    mocked_asyncio = mocker.patch('ouija.proxy.asyncio')
+    mocked_asyncio.start_server = AsyncMock()
+
+    await stream_proxy_test.serve()
+
+    mocked_asyncio.start_server.assert_awaited()
 
 
 def test_datagram_proxy_connection_made(datagram_proxy_test):
