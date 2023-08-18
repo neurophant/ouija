@@ -28,15 +28,11 @@ async def main() -> None:
     proxy = Proxy(
         telemetry=Telemetry(),
         tuning=tuning,
+        proxy_host='0.0.0.0',
+        proxy_port=50000,
     )
     asyncio.create_task(proxy.debug())
-    server = await asyncio.start_server(
-        proxy.serve,
-        '0.0.0.0',
-        50000,
-    )
-    async with server:
-        await server.serve_forever()
+    await proxy.serve()
 
 
 if __name__ == '__main__':

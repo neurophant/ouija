@@ -10,7 +10,7 @@ with open(path.join(here, 'README.rst'), encoding='utf-8') as f:
 
 setup(
     name='ouija',
-    version='1.2.0',
+    version='1.2.1',
     description='Python library to build reliable TCP and UDP tunnels for TCP traffic',
     long_description=long_description,
     url='https://github.com/neurophant/ouija/',

@@ -1,7 +1,7 @@
 __author__ = 'Anton Smolin'
 __copyright__ = 'Copyright (c) 2023 Anton Smolin'
 __license__ = 'MIT'
-__version__ = '1.2.0'
+__version__ = '1.2.1'
 
 from .data import Parser, Message, Phase, Packet
 from .telemetry import StreamTelemetry, DatagramTelemetry

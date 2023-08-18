@@ -12,6 +12,8 @@ from .log import logger
 class Relay:
     telemetry: Union[StreamTelemetry, DatagramTelemetry]
     tuning: Union[StreamTuning, DatagramTuning]
+    relay_host: str
+    relay_port: int
     proxy_host: str
     proxy_port: int
     connectors: dict[str, Union[StreamConnector, DatagramConnector]]
@@ -21,11 +23,15 @@ class Relay:
             *,
             telemetry: Union[StreamTelemetry, DatagramTelemetry],
             tuning: Union[StreamTuning, DatagramTuning],
+            relay_host: str,
+            relay_port: int,
             proxy_host: str,
             proxy_port: int,
     ) -> None:
         self.telemetry = telemetry
         self.tuning = tuning
+        self.relay_host = relay_host
+        self.relay_port = relay_port
         self.proxy_host = proxy_host
         self.proxy_port = proxy_port
         self.connectors = dict()
@@ -66,12 +72,20 @@ class Relay:
             logger.exception(e)
             self.telemetry.serving_error()
 
-    async def serve(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+    async def handle(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+        asyncio.create_task(self.connect(reader=reader, writer=writer))
+
+    async def serve(self) -> None:
         """HTTPS proxy server entry point
         :returns: None
         """
-
-        asyncio.create_task(self.connect(reader=reader, writer=writer))
+        server = await asyncio.start_server(
+            self.handle,
+            self.relay_host,
+            self.relay_port,
+        )
+        async with server:
+            await server.serve_forever()
 
     async def debug(self) -> None:    # pragma: no cover
         """Debug monitor with telemetry output

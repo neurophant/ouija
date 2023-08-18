@@ -11,9 +11,11 @@ from .log import logger
 class Proxy:
     telemetry: Union[StreamTelemetry, DatagramTelemetry]
     tuning: Union[StreamTuning, DatagramTuning]
+    proxy_host: str
+    proxy_port: int
     links: dict[Union[str, tuple[str, int]], Union[StreamLink, DatagramLink]]
 
-    async def serve(self, *args, **kwargs) -> None:
+    async def serve(self) -> None:
         """Proxy server entry point - should be overridden with protocol-based implementation
         :returns: None"""
         raise NotImplementedError
@@ -31,9 +33,18 @@ class Proxy:
 
 
 class StreamProxy(Proxy):
-    def __init__(self, *, telemetry: StreamTelemetry, tuning: StreamTuning) -> None:
+    def __init__(
+            self,
+            *,
+            telemetry: StreamTelemetry,
+            tuning: StreamTuning,
+            proxy_host: str,
+            proxy_port: int,
+    ) -> None:
         self.telemetry = telemetry
         self.tuning = tuning
+        self.proxy_host = proxy_host
+        self.proxy_port = proxy_port
         self.links = dict()
 
     async def link_wrapped(self, *, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
@@ -55,14 +66,21 @@ class StreamProxy(Proxy):
             logger.exception(e)
             self.telemetry.serving_error()
 
-    async def serve(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+    async def handle(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
         asyncio.create_task(self.link(reader=reader, writer=writer))
+
+    async def serve(self) -> None:
+        server = await asyncio.start_server(
+            self.handle,
+            self.proxy_host,
+            self.proxy_port,
+        )
+        async with server:
+            await server.serve_forever()
 
 
 class DatagramProxy(Proxy, asyncio.DatagramProtocol):
     transport: Optional[asyncio.DatagramTransport]
-    proxy_host: str
-    proxy_port: int
 
     def __init__(
             self,
