@@ -5,7 +5,7 @@ import pytest
 
 from ouija import Packet, Phase
 from ouija.exception import SendRetryError, TokenError, OnOpenError, OnServeError, BufOverloadError
-from ouija.data import Sent
+from ouija.data import Sent, Message
 
 
 @pytest.mark.asyncio
@@ -107,7 +107,7 @@ async def test_datagram_ouija_process_wrapped_open_tokenerror(datagram_ouija_tes
 @pytest.mark.xfail(raises=OnOpenError)
 async def test_datagram_ouija_process_wrapped_open_onopenerror(datagram_ouija_test, token_test):
     datagram_ouija_test.on_open = AsyncMock()
-    datagram_ouija_test.side_effect = OnOpenError()
+    datagram_ouija_test.on_open.side_effect = OnOpenError()
     packet = Packet(
         phase=Phase.OPEN,
         ack=False,
@@ -287,7 +287,6 @@ async def test_datagram_ouija_process(datagram_ouija_test):
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(raises=TokenError)
 async def test_datagram_ouija_process_tokenerror(datagram_ouija_test):
     datagram_ouija_test.process_wrapped = AsyncMock()
     datagram_ouija_test.process_wrapped.side_effect = TokenError()
@@ -304,7 +303,6 @@ async def test_datagram_ouija_process_tokenerror(datagram_ouija_test):
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(raises=OnOpenError)
 async def test_datagram_ouija_process_onopenerror(datagram_ouija_test):
     datagram_ouija_test.process_wrapped = AsyncMock()
     datagram_ouija_test.process_wrapped.side_effect = OnOpenError()
@@ -321,7 +319,6 @@ async def test_datagram_ouija_process_onopenerror(datagram_ouija_test):
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(raises=BufOverloadError)
 async def test_datagram_ouija_process_bufoverloaderror(datagram_ouija_test):
     datagram_ouija_test.process_wrapped = AsyncMock()
     datagram_ouija_test.process_wrapped.side_effect = BufOverloadError()
@@ -338,7 +335,6 @@ async def test_datagram_ouija_process_bufoverloaderror(datagram_ouija_test):
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(raises=ConnectionError)
 async def test_datagram_ouija_process_connectionerror(datagram_ouija_test):
     datagram_ouija_test.process_wrapped = AsyncMock()
     datagram_ouija_test.process_wrapped.side_effect = ConnectionError()
@@ -354,7 +350,6 @@ async def test_datagram_ouija_process_connectionerror(datagram_ouija_test):
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(raises=Exception)
 async def test_datagram_ouija_process_exception(datagram_ouija_test):
     datagram_ouija_test.process_wrapped = AsyncMock()
     datagram_ouija_test.process_wrapped.side_effect = Exception()
@@ -392,7 +387,6 @@ async def test_datagram_ouija_resend(datagram_ouija_test):
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(raises=TimeoutError)
 async def test_datagram_ouija_resend_timeouterror(datagram_ouija_test):
     datagram_ouija_test.resend_wrapped = AsyncMock()
     datagram_ouija_test.resend_wrapped.side_effect = TimeoutError()
@@ -458,7 +452,6 @@ async def test_datagram_ouija_serve_wrapped_onserveerror(datagram_ouija_test, da
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(raises=TimeoutError)
 async def test_datagram_ouija_serve_wrapped_timeouterror(datagram_ouija_test, data_test):
     async def resetter():
         await asyncio.sleep(3)
@@ -538,7 +531,6 @@ async def test_datagram_ouija_serve(datagram_ouija_test):
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(raises=OnServeError)
 async def test_datagram_ouija_serve_onserveerror(datagram_ouija_test):
     datagram_ouija_test.serve_wrapped = AsyncMock()
     datagram_ouija_test.serve_wrapped.side_effect = OnServeError()
@@ -551,7 +543,6 @@ async def test_datagram_ouija_serve_onserveerror(datagram_ouija_test):
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(raises=BufOverloadError)
 async def test_datagram_ouija_serve_bufoverloaderror(datagram_ouija_test):
     datagram_ouija_test.serve_wrapped = AsyncMock()
     datagram_ouija_test.serve_wrapped.side_effect = BufOverloadError()
@@ -564,7 +555,6 @@ async def test_datagram_ouija_serve_bufoverloaderror(datagram_ouija_test):
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(raises=TimeoutError)
 async def test_datagram_ouija_serve_timeouterror(datagram_ouija_test):
     datagram_ouija_test.serve_wrapped = AsyncMock()
     datagram_ouija_test.serve_wrapped.side_effect = TimeoutError()
@@ -577,7 +567,6 @@ async def test_datagram_ouija_serve_timeouterror(datagram_ouija_test):
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(raises=ConnectionError)
 async def test_datagram_ouija_serve_connectionerror(datagram_ouija_test):
     datagram_ouija_test.serve_wrapped = AsyncMock()
     datagram_ouija_test.serve_wrapped.side_effect = ConnectionError()
@@ -590,7 +579,6 @@ async def test_datagram_ouija_serve_connectionerror(datagram_ouija_test):
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(raises=Exception)
 async def test_datagram_ouija_serve_exception(datagram_ouija_test):
     datagram_ouija_test.serve_wrapped = AsyncMock()
     datagram_ouija_test.serve_wrapped.side_effect = Exception()
@@ -626,7 +614,7 @@ async def test_datagram_ouija_close_writer_exception(datagram_ouija_test):
     datagram_ouija_test.sync.set()
     datagram_ouija_test.writer = AsyncMock(spec=asyncio.StreamWriter)
     datagram_ouija_test.writer.is_closing = lambda: False
-    datagram_ouija_test.writer.close.side_effect = Exception
+    datagram_ouija_test.writer.close.side_effect = Exception()
     datagram_ouija_test.on_close = AsyncMock()
 
     await datagram_ouija_test.close()
@@ -637,3 +625,166 @@ async def test_datagram_ouija_close_writer_exception(datagram_ouija_test):
     datagram_ouija_test.writer.close.assert_called()
     datagram_ouija_test.writer.wait_closed.assert_not_awaited()
     datagram_ouija_test.on_close.assert_awaited()
+
+
+@pytest.mark.asyncio
+async def test_stream_ouija_forward_wrapped(stream_ouija_test, data_test, fernet_test):
+    async def resetter():
+        await asyncio.sleep(3)
+        stream_ouija_test.sync.clear()
+
+    async def readuntil(*args, **kwargs):
+        await asyncio.sleep(0.5)
+        return Message.encrypt(data=data_test, fernet=fernet_test)
+
+    stream_ouija_test.target_reader.readuntil = readuntil
+    stream_ouija_test.sync.set()
+    asyncio.create_task(resetter())
+
+    await stream_ouija_test.forward_wrapped(
+        reader=stream_ouija_test.target_reader,
+        writer=stream_ouija_test.writer,
+        crypt=False,
+    )
+
+    stream_ouija_test.target_reader.read.assert_not_called()
+    stream_ouija_test.writer.write.assert_called()
+    stream_ouija_test.writer.drain.assert_awaited()
+
+
+@pytest.mark.asyncio
+async def test_stream_ouija_forward_wrapped_crypt(stream_ouija_test, data_test):
+    async def resetter():
+        await asyncio.sleep(3)
+        stream_ouija_test.sync.clear()
+
+    async def read(*args, **kwargs):
+        await asyncio.sleep(0.5)
+        return data_test
+
+    stream_ouija_test.reader.read = read
+    stream_ouija_test.sync.set()
+    asyncio.create_task(resetter())
+
+    await stream_ouija_test.forward_wrapped(
+        reader=stream_ouija_test.reader,
+        writer=stream_ouija_test.target_writer,
+        crypt=True,
+    )
+
+    stream_ouija_test.reader.readuntil.assert_not_called()
+    stream_ouija_test.target_writer.write.assert_called()
+    stream_ouija_test.target_writer.drain.assert_awaited()
+
+
+@pytest.mark.asyncio
+async def test_stream_ouija_forward_wrapped_timeouterror(stream_ouija_test, data_test, fernet_test):
+    async def resetter():
+        await asyncio.sleep(2)
+        stream_ouija_test.sync.clear()
+
+    stream_ouija_test.target_reader.readuntil.side_effect = TimeoutError()
+    stream_ouija_test.sync.set()
+    asyncio.create_task(resetter())
+
+    await stream_ouija_test.forward_wrapped(
+        reader=stream_ouija_test.target_reader,
+        writer=stream_ouija_test.writer,
+        crypt=False,
+    )
+
+    stream_ouija_test.target_reader.read.assert_not_called()
+    stream_ouija_test.writer.write.assert_not_called()
+    stream_ouija_test.writer.drain.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_stream_ouija_forward_wrapped_incompletereaderror(stream_ouija_test, data_test, fernet_test):
+    stream_ouija_test.target_reader.readuntil.side_effect = asyncio.IncompleteReadError(partial=b'', expected=10)
+    stream_ouija_test.sync.set()
+
+    await stream_ouija_test.forward_wrapped(
+        reader=stream_ouija_test.target_reader,
+        writer=stream_ouija_test.writer,
+        crypt=False,
+    )
+
+    stream_ouija_test.target_reader.read.assert_not_called()
+    stream_ouija_test.writer.write.assert_not_called()
+    stream_ouija_test.writer.drain.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_stream_ouija_forward_wrapped_empty(stream_ouija_test, data_test, fernet_test):
+    async def resetter():
+        await asyncio.sleep(3)
+        stream_ouija_test.sync.clear()
+
+    async def readuntil(*args, **kwargs):
+        await asyncio.sleep(0.5)
+        return b''
+
+    stream_ouija_test.target_reader.readuntil = readuntil
+    stream_ouija_test.sync.set()
+    asyncio.create_task(resetter())
+
+    await stream_ouija_test.forward_wrapped(
+        reader=stream_ouija_test.target_reader,
+        writer=stream_ouija_test.writer,
+        crypt=False,
+    )
+
+    stream_ouija_test.target_reader.read.assert_not_called()
+    stream_ouija_test.writer.write.assert_not_called()
+    stream_ouija_test.writer.drain.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_stream_ouija_forward(stream_ouija_test):
+    stream_ouija_test.forward_wrapped = AsyncMock()
+    stream_ouija_test.on_close = AsyncMock()
+    stream_ouija_test.close = AsyncMock()
+
+    await stream_ouija_test.forward(reader=stream_ouija_test.reader, writer=stream_ouija_test.target_writer, crypt=True)
+
+    stream_ouija_test.forward_wrapped.assert_awaited()
+    stream_ouija_test.close.assert_awaited()
+
+
+@pytest.mark.asyncio
+async def test_stream_ouija_forward_timeouterror(stream_ouija_test):
+    stream_ouija_test.forward_wrapped = AsyncMock()
+    stream_ouija_test.forward_wrapped.side_effect = TimeoutError()
+    stream_ouija_test.on_close = AsyncMock()
+    stream_ouija_test.close = AsyncMock()
+
+    await stream_ouija_test.forward(reader=stream_ouija_test.reader, writer=stream_ouija_test.target_writer, crypt=True)
+
+    stream_ouija_test.forward_wrapped.assert_called()
+    stream_ouija_test.close.assert_awaited()
+
+
+@pytest.mark.asyncio
+async def test_stream_ouija_forward_connectionerror(stream_ouija_test):
+    stream_ouija_test.forward_wrapped = AsyncMock()
+    stream_ouija_test.forward_wrapped.side_effect = ConnectionError()
+    stream_ouija_test.on_close = AsyncMock()
+    stream_ouija_test.close = AsyncMock()
+
+    await stream_ouija_test.forward(reader=stream_ouija_test.reader, writer=stream_ouija_test.target_writer, crypt=True)
+
+    stream_ouija_test.forward_wrapped.assert_called()
+    stream_ouija_test.close.assert_awaited()
+
+
+@pytest.mark.asyncio
+async def test_stream_ouija_forward_exception(stream_ouija_test):
+    stream_ouija_test.forward_wrapped = AsyncMock()
+    stream_ouija_test.forward_wrapped.side_effect = Exception()
+    stream_ouija_test.on_close = AsyncMock()
+    stream_ouija_test.close = AsyncMock()
+
+    await stream_ouija_test.forward(reader=stream_ouija_test.reader, writer=stream_ouija_test.target_writer, crypt=True)
+
+    stream_ouija_test.forward_wrapped.assert_called()
+    stream_ouija_test.close.assert_awaited()

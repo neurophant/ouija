@@ -62,6 +62,38 @@ def datagram_tuning_test(fernet_test, token_test):
     )
 
 
+class StreamOuijaTest(StreamOuija):
+    def __init__(
+            self,
+            *,
+            telemetry: StreamTelemetry,
+            tuning: StreamTuning,
+            remote_host: Optional[str],
+            remote_port: Optional[int],
+    ):
+        self.telemetry = telemetry
+        self.tuning = tuning
+        self.crypt = True
+        self.reader = AsyncMock()
+        self.writer = AsyncMock()
+        self.remote_host = remote_host
+        self.remote_port = remote_port
+        self.target_reader = AsyncMock()
+        self.target_writer = AsyncMock()
+        self.opened = asyncio.Event()
+        self.sync = asyncio.Event()
+
+
+@pytest.fixture
+def stream_ouija_test(stream_telemetry_test, stream_tuning_test):
+    return StreamOuijaTest(
+        telemetry=stream_telemetry_test,
+        tuning=stream_tuning_test,
+        remote_host='example.com',
+        remote_port=50000,
+    )
+
+
 class DatagramOuijaTest(DatagramOuija):
     def __init__(
             self,
