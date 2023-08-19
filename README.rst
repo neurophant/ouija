@@ -5,10 +5,9 @@ Python library to build reliable TCP and UDP tunnels for TCP traffic
 
 |pypi|
 
-.. |pypi| image:: https://badge.fury.io/py/ouija@2x.png
+.. |pypi| image:: https://badge.fury.io/py/ouija.svg
     :target: https://badge.fury.io/py/ouija
     :alt: pypi version
-    :width: 120
 
 Relay and proxy implementations:
 
@@ -105,17 +104,13 @@ ouija-stream-relay - HTTPS proxy server interface with TCP connectors:
         relay = Relay(
             telemetry=Telemetry(),
             tuning=tuning,
+            relay_host='127.0.0.1',
+            relay_port=9000,
             proxy_host='127.0.0.1',
             proxy_port=50000,
         )
         asyncio.create_task(relay.debug())
-        server = await asyncio.start_server(
-            relay.serve,
-            '127.0.0.1',
-            9000,
-        )
-        async with server:
-            await server.serve_forever()
+        await relay.serve()
 
 
     if __name__ == '__main__':
@@ -146,15 +141,11 @@ ouija-stream-proxy - TCP-relayed proxy server:
         proxy = Proxy(
             telemetry=Telemetry(),
             tuning=tuning,
+            proxy_host='0.0.0.0',
+            proxy_port=50000,
         )
         asyncio.create_task(proxy.debug())
-        server = await asyncio.start_server(
-            proxy.serve,
-            '0.0.0.0',
-            50000,
-        )
-        async with server:
-            await server.serve_forever()
+        await proxy.serve()
 
 
     if __name__ == '__main__':
@@ -189,17 +180,13 @@ ouija-datagram-relay - HTTPS proxy server interface with UDP connectors:
         relay = Relay(
             telemetry=Telemetry(),
             tuning=tuning,
+            relay_host='127.0.0.1',
+            relay_port=9000,
             proxy_host='127.0.0.1',
             proxy_port=50000,
         )
         asyncio.create_task(relay.debug())
-        server = await asyncio.start_server(
-            relay.serve,
-            '127.0.0.1',
-            9000,
-        )
-        async with server:
-            await server.serve_forever()
+        await relay.serve()
 
 
     if __name__ == '__main__':
