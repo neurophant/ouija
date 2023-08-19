@@ -5,9 +5,10 @@ Python library to build reliable TCP and UDP tunnels for TCP traffic
 
 |pypi|
 
-.. |pypi| image:: https://badge.fury.io/py/ouija.svg
+.. |pypi| image:: https://badge.fury.io/py/ouija@2x.png
     :target: https://badge.fury.io/py/ouija
     :alt: pypi version
+    :width: 120
 
 Relay and proxy implementations:
 
