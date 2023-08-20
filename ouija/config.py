@@ -15,8 +15,8 @@ class Protocol(StrEnum):
 
 
 class Config:
-    mode: Mode
     protocol: Protocol
+    mode: Mode
     debug: bool
     monitor: bool
     relay_host: str
@@ -39,13 +39,13 @@ class Config:
         with open(path, 'r') as fp:
             json_dict = json.load(fp)
 
-        self.mode = Mode(json_dict.get('mode'))
         self.protocol = Protocol(json_dict.get('protocol'))
+        self.mode = Mode(json_dict.get('mode'))
         self.debug = json_dict.get('debug')
         self.monitor = json_dict.get('monitor')
 
-        self.relay_host = json_dict.get('relay_host')
-        self.relay_port = json_dict.get('relay_port')
+        self.relay_host = json_dict.get('relay_host', None)
+        self.relay_port = json_dict.get('relay_port', None)
         self.proxy_host = json_dict.get('proxy_host')
         self.proxy_port = json_dict.get('proxy_port')
 
@@ -54,9 +54,9 @@ class Config:
         self.serving_timeout = json_dict.get('serving_timeout')
         self.tcp_buffer = json_dict.get('tcp_buffer')
         self.tcp_timeout = json_dict.get('tcp_timeout')
-        self.message_timeout = json_dict.get('message_timeout')
-        self.udp_payload = json_dict.get('udp_payload')
-        self.udp_timeout = json_dict.get('udp_timeout')
-        self.udp_retries = json_dict.get('udp_retries')
-        self.udp_capacity = json_dict.get('udp_capacity')
-        self.udp_resend_sleep = json_dict.get('udp_resend_sleep')
+        self.message_timeout = json_dict.get('message_timeout', None)
+        self.udp_payload = json_dict.get('udp_payload', None)
+        self.udp_timeout = json_dict.get('udp_timeout', None)
+        self.udp_retries = json_dict.get('udp_retries', None)
+        self.udp_capacity = json_dict.get('udp_capacity', None)
+        self.udp_resend_sleep = json_dict.get('udp_resend_sleep', None)

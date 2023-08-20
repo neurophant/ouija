@@ -5,15 +5,9 @@ Python app and library to build reliable TCP and UDP tunnels for TCP traffic
 
 |pypi|
 
-.. |pypi| image:: https://badge.fury.io/py/ouija@2x.png
+.. |pypi| image:: https://badge.fury.io/py/ouija.svg
     :target: https://badge.fury.io/py/ouija
     :alt: pypi version
-    :width: 120
-
-Relay and proxy implementations:
-
-* `ouija-relay <https://github.com/neurophant/ouija-relay>`_
-* `ouija-proxy <https://github.com/neurophant/ouija-proxy>`_
 
 Features
 --------
@@ -23,6 +17,129 @@ Hides TCP traffic in encrypted TCP/UDP traffic between relay and proxy servers
 .. image:: https://raw.githubusercontent.com/neurophant/ouija/main/ouija.png
     :alt: TCP/UDP tunneling
     :width: 800
+
+Requirements
+------------
+
+* Python 3.11
+* pbjson 1.18.0
+* cryptography 41.0.2
+
+Setup
+-----
+
+.. code-block:: bash
+
+    pip3 install ouija
+
+Usage
+-----
+
+.. code-block:: bash
+
+    ouija <config.json>
+
+ouija-tcp-relay.json - HTTPS proxy server interface with TCP connectors:
+
+.. code-block:: javascript
+
+    {
+      "protocol": "TCP",
+      "mode": "RELAY",
+      "debug": true,
+      "monitor": true,
+      "relay_host": "127.0.0.1",
+      "relay_port": 9000,
+      "proxy_host": "127.0.0.1",
+      "proxy_port": 50000,
+      "key": "bdDmN4VexpDvTrs6gw8xTzaFvIBobFg1Cx2McFB1RmI=",
+      "token": "secret",
+      "serving_timeout": 20.0,
+      "tcp_buffer": 1024,
+      "tcp_timeout": 1.0,
+      "message_timeout": 5.0
+    }
+
+ouija-tcp-proxy.json - TCP-relayed proxy server:
+
+.. code-block:: javascript
+
+    {
+      "protocol": "TCP",
+      "mode": "PROXY",
+      "debug": true,
+      "monitor": true,
+      "proxy_host": "0.0.0.0",
+      "proxy_port": 50000,
+      "key": "bdDmN4VexpDvTrs6gw8xTzaFvIBobFg1Cx2McFB1RmI=",
+      "token": "secret",
+      "serving_timeout": 20.0,
+      "tcp_buffer": 1024,
+      "tcp_timeout": 1.0,
+      "message_timeout": 5.0
+    }
+
+ouija-udp-relay.json - HTTPS proxy server interface with UDP connectors:
+
+.. code-block:: javascript
+
+    {
+      "protocol": "UDP",
+      "mode": "RELAY",
+      "debug": true,
+      "monitor": true,
+      "relay_host": "127.0.0.1",
+      "relay_port": 9000,
+      "proxy_host": "127.0.0.1",
+      "proxy_port": 50000,
+      "key": "bdDmN4VexpDvTrs6gw8xTzaFvIBobFg1Cx2McFB1RmI=",
+      "token": "secret",
+      "serving_timeout": 20.0,
+      "tcp_buffer": 1024,
+      "tcp_timeout": 1.0,
+      "udp_payload": 1024,
+      "udp_timeout": 2.0,
+      "udp_retries": 5,
+      "udp_capacity": 10000,
+      "udp_resend_sleep": 0.25
+    }
+
+ouija-udp-proxy.json - UDP-relayed proxy server:
+
+.. code-block:: json
+
+    {
+      "protocol": "UDP",
+      "mode": "PROXY",
+      "debug": true,
+      "monitor": true,
+      "proxy_host": "0.0.0.0",
+      "proxy_port": 50000,
+      "key": "bdDmN4VexpDvTrs6gw8xTzaFvIBobFg1Cx2McFB1RmI=",
+      "token": "secret",
+      "serving_timeout": 20.0,
+      "tcp_buffer": 1024,
+      "tcp_timeout": 1.0,
+      "udp_payload": 1024,
+      "udp_timeout": 2.0,
+      "udp_retries": 5,
+      "udp_capacity": 10000,
+      "udp_resend_sleep": 0.25
+    }
+
+Relay and proxy configuration:
+
+* `ouija-relay <https://github.com/neurophant/ouija-relay>`_
+* `ouija-proxy <https://github.com/neurophant/ouija-proxy>`_
+
+Library setup
+-------------
+
+.. code-block:: bash
+
+    python3.11 -m venv .env
+    source .env/bin/activate
+    pip install ouija
 
 Protocols
 ---------
@@ -63,26 +180,10 @@ Tuning - UDP
 * udp_capacity - UDP send/receive buffer capacity - max packet count
 * udp_resend_sleep - UDP resend sleep between retries, seconds
 
-Requirements
-------------
+Library usage
+-------------
 
-* Python 3.11
-* pbjson 1.18.0
-* cryptography 41.0.2
-
-Setup
------
-
-.. code-block:: bash
-
-    python -m venv .env
-    source .env/bin/activate
-    pip install ouija
-
-Usage
------
-
-ouija-stream-relay - HTTPS proxy server interface with TCP connectors:
+ouija-stream-relay.py - HTTPS proxy server interface with TCP connectors:
 
 .. code-block:: python
 
@@ -119,7 +220,7 @@ ouija-stream-relay - HTTPS proxy server interface with TCP connectors:
         loop.run_until_complete(main())
         loop.run_forever()
 
-ouija-stream-proxy - TCP-relayed proxy server:
+ouija-stream-proxy.py - TCP-relayed proxy server:
 
 .. code-block:: python
 
@@ -154,7 +255,7 @@ ouija-stream-proxy - TCP-relayed proxy server:
         loop.run_until_complete(main())
         loop.run_forever()
 
-ouija-datagram-relay - HTTPS proxy server interface with UDP connectors:
+ouija-datagram-relay.py - HTTPS proxy server interface with UDP connectors:
 
 .. code-block:: python
 
@@ -195,7 +296,7 @@ ouija-datagram-relay - HTTPS proxy server interface with UDP connectors:
         loop.run_until_complete(main())
         loop.run_forever()
 
-ouija-datagram-proxy - UDP-relayed proxy server:
+ouija-datagram-proxy.py - UDP-relayed proxy server:
 
 .. code-block:: python
 

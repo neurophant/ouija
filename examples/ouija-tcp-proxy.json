@@ -1,0 +1,14 @@
+{
+  "protocol": "TCP",
+  "mode": "PROXY",
+  "debug": true,
+  "monitor": true,
+  "proxy_host": "0.0.0.0",
+  "proxy_port": 50000,
+  "key": "bdDmN4VexpDvTrs6gw8xTzaFvIBobFg1Cx2McFB1RmI=",
+  "token": "secret",
+  "serving_timeout": 20.0,
+  "tcp_buffer": 1024,
+  "tcp_timeout": 1.0,
+  "message_timeout": 5.0
+}

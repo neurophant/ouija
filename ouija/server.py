@@ -9,9 +9,9 @@ from .proxy import StreamProxy, DatagramProxy
 from .config import Config, Mode, Protocol
 
 
-async def main() -> None:
+async def main_async() -> None:
     if len(sys.argv[1:]) != 1:
-        print('Usage: python -m ouija.server <config.json>')
+        print('Usage: ouija <config.json>')
         sys.exit(0)
 
     config = Config(path=sys.argv[1])
@@ -35,7 +35,7 @@ async def main() -> None:
             )
             relay_class = StreamRelay
             proxy_class = StreamProxy
-        case Protocol.TCP:
+        case Protocol.UDP:
             telemetry_class = DatagramTelemetry
             tuning = DatagramTuning(
                 fernet=config.fernet,
@@ -80,7 +80,11 @@ async def main() -> None:
     await server.serve()
 
 
-if __name__ == '__main__':
+def main() -> None:
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(main())
+    loop.run_until_complete(main_async())
     loop.run_forever()
+
+
+if __name__ == '__main__':
+    main()
