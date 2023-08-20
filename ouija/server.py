@@ -24,7 +24,7 @@ async def main_async() -> None:
 
     match config.protocol:
         case Protocol.TCP:
-            telemetry_class = StreamTelemetry
+            telemetry_class, relay_class, proxy_class = StreamTelemetry, StreamRelay, StreamProxy
             tuning = StreamTuning(
                 fernet=config.fernet,
                 token=config.token,
@@ -33,10 +33,8 @@ async def main_async() -> None:
                 tcp_timeout=config.tcp_timeout,
                 message_timeout=config.message_timeout,
             )
-            relay_class = StreamRelay
-            proxy_class = StreamProxy
         case Protocol.UDP:
-            telemetry_class = DatagramTelemetry
+            telemetry_class, relay_class, proxy_class = DatagramTelemetry, DatagramRelay, DatagramProxy
             tuning = DatagramTuning(
                 fernet=config.fernet,
                 token=config.token,
@@ -49,8 +47,6 @@ async def main_async() -> None:
                 udp_capacity=config.udp_capacity,
                 udp_resend_sleep=config.udp_resend_sleep,
             )
-            relay_class = DatagramRelay
-            proxy_class = DatagramProxy
         case _:
             raise NotImplementedError
 
