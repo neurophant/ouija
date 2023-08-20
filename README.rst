@@ -1,7 +1,7 @@
 Ouija
 =====
 
-Python library to build reliable TCP and UDP tunnels for TCP traffic
+Python app and library to build reliable TCP and UDP tunnels for TCP traffic
 
 |pypi|
 
@@ -66,9 +66,9 @@ Tuning - UDP
 Requirements
 ------------
 
-* Python 3.11+
-* pbjson 1.18.0+
-* cryptography 41.0.2+
+* Python 3.11
+* pbjson 1.18.0
+* cryptography 41.0.2
 
 Setup
 -----

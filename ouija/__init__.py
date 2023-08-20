@@ -1,7 +1,7 @@
 __author__ = 'Anton Smolin'
 __copyright__ = 'Copyright (c) 2023 Anton Smolin'
 __license__ = 'MIT'
-__version__ = '1.2.2'
+__version__ = '1.2.3'
 
 from .data import Parser, Message, Phase, Packet
 from .telemetry import StreamTelemetry, DatagramTelemetry
@@ -11,3 +11,4 @@ from .connector import StreamConnector, DatagramConnector
 from .link import StreamLink, DatagramLink
 from .relay import StreamRelay, DatagramRelay
 from .proxy import StreamProxy, DatagramProxy
+from .config import Config, Mode, Protocol
