@@ -41,7 +41,7 @@ Usage
 
 ouija-tcp-relay.json - HTTPS proxy server interface with TCP connectors:
 
-.. code-block:: javascript
+.. code-block:: json
 
     {
       "protocol": "TCP",
@@ -62,7 +62,7 @@ ouija-tcp-relay.json - HTTPS proxy server interface with TCP connectors:
 
 ouija-tcp-proxy.json - TCP-relayed proxy server:
 
-.. code-block:: javascript
+.. code-block:: json
 
     {
       "protocol": "TCP",
@@ -81,7 +81,7 @@ ouija-tcp-proxy.json - TCP-relayed proxy server:
 
 ouija-udp-relay.json - HTTPS proxy server interface with UDP connectors:
 
-.. code-block:: javascript
+.. code-block:: json
 
     {
       "protocol": "UDP",
