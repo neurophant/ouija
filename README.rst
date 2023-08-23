@@ -1,7 +1,7 @@
 Ouija
 =====
 
-Python app and library to build reliable TCP and UDP tunnels for TCP traffic
+Python relay-proxy server and library to build reliable TCP and UDP tunnels for TCP traffic
 
 |pypi|
 
@@ -25,8 +25,8 @@ Requirements
 * pbjson 1.18.0
 * cryptography 41.0.2
 
-Setup
------
+Install
+-------
 
 .. code-block:: bash
 
@@ -129,7 +129,7 @@ udp-proxy.json - UDP-relayed proxy server:
       "udp_resend_sleep": 0.25
     }
 
-Relay and proxy configuration with supervisord - `ouija-config <https://github.com/neurophant/ouija-config>`_
+Relay and proxy setup configuration with supervisord - `ouija-config <https://github.com/neurophant/ouija-config>`_
 
 Protocols
 ---------
