@@ -26,12 +26,19 @@ class SpaceEntropy(Entropy):
 
     def decrease(self, *, data: bytes) -> bytes:
         decreased = b''
+
         for idx in range(0, len(data), self.every - 1):
-            decreased += bytes(data[idx:idx + self.every - 1]) + bytes(data[randrange(0, len(data))])
+            rnd = randrange(0, len(data))
+            decreased += data[idx:idx + self.every - 1]
+            if len(data) - idx >= self.every - 1:
+                decreased += data[rnd: rnd + 1]
+
         return decreased
 
     def increase(self, *, data: bytes) -> bytes:
         increased = b''
+
         for idx in range(0, len(data), self.every):
-            increased += bytes(data[idx:idx + self.every - 1])
+            increased += data[idx:idx + self.every - 1]
+
         return increased

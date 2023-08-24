@@ -102,10 +102,10 @@ class Message:
 
     @staticmethod
     def encrypt(*, data: bytes, fernet: Fernet, entropy: Optional[Entropy]) -> bytes:
+        data = fernet.encrypt(data)
+
         if entropy:
             data = entropy.decrease(data=data)
-
-        data = fernet.encrypt(data)
 
         return data + SEPARATOR
 
