@@ -11,7 +11,7 @@ from .config import Config, Mode, Protocol
 
 async def main_async() -> None:
     if len(sys.argv[1:]) != 1:
-        print('Usage: ouija <config.json>')
+        print('Usage: ouija <config.json>\n')
         sys.exit(0)
 
     config = Config(path=sys.argv[1])

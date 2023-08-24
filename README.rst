@@ -37,6 +37,14 @@ Install
 Usage
 -----
 
+Generate key/token secrets:
+
+.. code-block:: bash
+
+    ouija_secret
+
+Run relay/proxy server:
+
 .. code-block:: bash
 
     ouija <config.json>
@@ -149,8 +157,8 @@ Entities
 Tuning - TCP
 ------------
 
-* fernet - Fernet instance with provided secret key - use Fernet.generate_key()
-* token - your secret token - UUID4 or anything else
+* fernet - Fernet instance with provided secret key - use ouija_secret to generate key
+* token - your secret token - UUID4 or anything else - use ouija_secret to generate token
 * serving_timeout - timeout for serve/resend workers, 2X for handlers, seconds
 * tcp_buffer - TCP buffer size, bytes
 * tcp_timeout - TCP awaiting timeout, seconds
@@ -159,8 +167,8 @@ Tuning - TCP
 Tuning - UDP
 ------------
 
-* fernet - Fernet instance with provided secret key - use Fernet.generate_key()
-* token - your secret token - UUID4 or anything else
+* fernet - Fernet instance with provided secret key - use ouija_secret to generate key
+* token - your secret token - UUID4 or anything else - use ouija_secret to generate token
 * serving_timeout - timeout for serve/resend workers, 2X for handlers, seconds
 * tcp_buffer - TCP buffer size, bytes
 * tcp_timeout - TCP awaiting timeout, seconds
