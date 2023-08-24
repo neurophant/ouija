@@ -1,4 +1,3 @@
-import base64
 import re
 import time
 from dataclasses import dataclass, field
@@ -6,8 +5,8 @@ from enum import IntEnum
 from typing import Optional
 
 import pbjson
-from cryptography.fernet import Fernet
 
+from .cipher import Cipher
 from .entropy import Entropy
 
 
@@ -75,13 +74,13 @@ class Message:
     port: Optional[int] = None
 
     @staticmethod
-    def message(*, data: bytes, fernet: Fernet, entropy: Optional[Entropy]) -> 'Message':
+    def message(*, data: bytes, cipher: Optional[Cipher], entropy: Optional[Entropy]) -> 'Message':
         data = data[:-len(SEPARATOR)]
 
         if entropy:
             data = entropy.increase(data=data)
-
-        data = fernet.decrypt(data)
+        if cipher:
+            data = cipher.decrypt(data=data)
 
         json_dict = pbjson.loads(data)
         return Message(
@@ -90,33 +89,34 @@ class Message:
             port=json_dict.get(MAPPING['port'], None),
         )
 
-    def binary(self, *, fernet: Fernet, entropy: Optional[Entropy]) -> bytes:
+    def binary(self, *, cipher: Optional[Cipher], entropy: Optional[Entropy]) -> bytes:
         json_dict = {MAPPING[k]: v for k, v in self.__dict__.items() if v is not None}
+        data = pbjson.dumps(json_dict)
 
-        data = fernet.encrypt(pbjson.dumps(json_dict))
-
+        if cipher:
+            data = cipher.encrypt(data=data)
         if entropy:
             data = entropy.decrease(data=data)
 
         return data + SEPARATOR
 
     @staticmethod
-    def encrypt(*, data: bytes, fernet: Fernet, entropy: Optional[Entropy]) -> bytes:
-        data = fernet.encrypt(data)
-
+    def encrypt(*, data: bytes, cipher: Optional[Cipher], entropy: Optional[Entropy]) -> bytes:
+        if cipher:
+            data = cipher.encrypt(data=data)
         if entropy:
             data = entropy.decrease(data=data)
 
         return data + SEPARATOR
 
     @staticmethod
-    def decrypt(*, data: bytes, fernet: Fernet, entropy: Optional[Entropy]) -> bytes:
+    def decrypt(*, data: bytes, cipher: Optional[Cipher], entropy: Optional[Entropy]) -> bytes:
         data = data[:-len(SEPARATOR)]
 
         if entropy:
             data = entropy.increase(data=data)
-
-        data = fernet.decrypt(data)
+        if cipher:
+            data = cipher.decrypt(data=data)
 
         return data
 
@@ -139,11 +139,11 @@ class Packet:
     drain: Optional[bool] = None
 
     @staticmethod
-    def packet(*, data: bytes, fernet: Fernet, entropy: Optional[Entropy]) -> 'Packet':
+    def packet(*, data: bytes, cipher: Optional[Cipher], entropy: Optional[Entropy]) -> 'Packet':
         if entropy:
             data = entropy.increase(data=data)
-
-        data = fernet.decrypt(base64.urlsafe_b64encode(data))
+        if cipher:
+            data = cipher.decrypt(data=data)
 
         json_dict = pbjson.loads(data)
         return Packet(
@@ -157,11 +157,12 @@ class Packet:
             drain=json_dict.get(MAPPING['drain'], None),
         )
 
-    def binary(self, *, fernet: Fernet, entropy: Optional[Entropy]) -> bytes:
+    def binary(self, *, cipher: Optional[Cipher], entropy: Optional[Entropy]) -> bytes:
         json_dict = {MAPPING[k]: v for k, v in self.__dict__.items() if v is not None}
+        data = pbjson.dumps(json_dict)
 
-        data = base64.urlsafe_b64decode(fernet.encrypt(pbjson.dumps(json_dict)))
-
+        if cipher:
+            data = cipher.encrypt(data=data)
         if entropy:
             data = entropy.decrease(data=data)
 

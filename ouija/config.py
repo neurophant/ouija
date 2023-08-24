@@ -2,10 +2,6 @@ import json
 from enum import StrEnum
 from typing import Optional
 
-from cryptography.fernet import Fernet
-
-from .entropy import SpaceEntropy
-
 
 class Mode(StrEnum):
     RELAY = 'RELAY'
@@ -26,9 +22,9 @@ class Config:
     relay_port: Optional[int]
     proxy_host: str
     proxy_port: int
-    fernet: Fernet
-    token: str
+    cipher_key: Optional[str]
     entropy_every: Optional[int]
+    token: str
     serving_timeout: float
     tcp_buffer: int
     tcp_timeout: float
@@ -53,9 +49,9 @@ class Config:
         self.proxy_host = json_dict.get('proxy_host')
         self.proxy_port = json_dict.get('proxy_port')
 
-        self.fernet = Fernet(json_dict.get('key'))
-        self.token = json_dict.get('token')
+        self.cipher_key = json_dict.get('cipher_key', None)
         self.entropy_every = json_dict.get('entropy_every', None)
+        self.token = json_dict.get('token')
         self.serving_timeout = json_dict.get('serving_timeout')
         self.tcp_buffer = json_dict.get('tcp_buffer')
         self.tcp_timeout = json_dict.get('tcp_timeout')

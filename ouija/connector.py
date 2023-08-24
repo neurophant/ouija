@@ -56,7 +56,7 @@ class StreamConnector(StreamOuija):
         self.target_reader, self.target_writer = await asyncio.open_connection(self.proxy_host, self.proxy_port)
 
         message = Message(token=self.tuning.token, host=self.remote_host, port=self.remote_port)
-        data = message.binary(fernet=self.tuning.fernet, entropy=self.tuning.entropy)
+        data = message.binary(cipher=self.tuning.cipher, entropy=self.tuning.entropy)
         self.target_writer.write(data)
         await self.target_writer.drain()
 
@@ -65,7 +65,7 @@ class StreamConnector(StreamOuija):
         except (TimeoutError, asyncio.IncompleteReadError):
             raise OnServeError
 
-        message = Message.message(data=data, fernet=self.tuning.fernet, entropy=self.tuning.entropy)
+        message = Message.message(data=data, cipher=self.tuning.cipher, entropy=self.tuning.entropy)
         if message.token != self.tuning.token:
             raise TokenError
 

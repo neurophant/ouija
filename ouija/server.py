@@ -2,6 +2,7 @@ import asyncio
 import logging
 import sys
 
+from .cipher import FernetCipher
 from .entropy import SpaceEntropy
 from .tuning import StreamTuning, DatagramTuning
 from .telemetry import StreamTelemetry, DatagramTelemetry
@@ -23,15 +24,16 @@ async def main_async() -> None:
         level=logging.DEBUG if config.debug else logging.ERROR,
     )
 
+    cipher = FernetCipher(key=config.cipher_key)
     entropy = SpaceEntropy(every=config.entropy_every) if config.entropy_every else None
 
     match config.protocol:
         case Protocol.TCP:
             telemetry_class, relay_class, proxy_class = StreamTelemetry, StreamRelay, StreamProxy
             tuning = StreamTuning(
-                fernet=config.fernet,
-                token=config.token,
+                cipher=cipher,
                 entropy=entropy,
+                token=config.token,
                 serving_timeout=config.serving_timeout,
                 tcp_buffer=config.tcp_buffer,
                 tcp_timeout=config.tcp_timeout,
@@ -40,9 +42,9 @@ async def main_async() -> None:
         case Protocol.UDP:
             telemetry_class, relay_class, proxy_class = DatagramTelemetry, DatagramRelay, DatagramProxy
             tuning = DatagramTuning(
-                fernet=config.fernet,
-                token=config.token,
+                cipher=cipher,
                 entropy=entropy,
+                token=config.token,
                 serving_timeout=config.serving_timeout,
                 tcp_buffer=config.tcp_buffer,
                 tcp_timeout=config.tcp_timeout,

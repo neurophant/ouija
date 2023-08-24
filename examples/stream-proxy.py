@@ -4,9 +4,7 @@ sys.path.append('../')
 import asyncio
 import logging
 
-from cryptography.fernet import Fernet
-
-from ouija import StreamProxy as Proxy, StreamTelemetry as Telemetry, StreamTuning as Tuning, SpaceEntropy
+from ouija import StreamProxy as Proxy, StreamTelemetry as Telemetry, StreamTuning as Tuning, SpaceEntropy, FernetCipher
 
 
 logging.basicConfig(
@@ -18,9 +16,9 @@ logging.basicConfig(
 
 async def main() -> None:
     tuning = Tuning(
-        fernet=Fernet('bdDmN4VexpDvTrs6gw8xTzaFvIBobFg1Cx2McFB1RmI='),
-        token='secret',
+        cipher=FernetCipher(key='bdDmN4VexpDvTrs6gw8xTzaFvIBobFg1Cx2McFB1RmI='),
         entropy=SpaceEntropy(every=5),
+        token='secret',
         serving_timeout=20.0,
         tcp_buffer=1024,
         tcp_timeout=1.0,

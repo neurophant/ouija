@@ -13,3 +13,4 @@ from .relay import StreamRelay, DatagramRelay
 from .proxy import StreamProxy, DatagramProxy
 from .config import Config, Mode, Protocol
 from .entropy import Entropy, SpaceEntropy
+from .cipher import Cipher, FernetCipher

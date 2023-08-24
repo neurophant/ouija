@@ -45,7 +45,7 @@ class StreamLink(StreamOuija):
         except (TimeoutError, asyncio.IncompleteReadError):
             raise OnServeError
 
-        message = Message.message(data=data, fernet=self.tuning.fernet, entropy=self.tuning.entropy)
+        message = Message.message(data=data, cipher=self.tuning.cipher, entropy=self.tuning.entropy)
         if message.token != self.tuning.token:
             raise TokenError
 
@@ -54,7 +54,7 @@ class StreamLink(StreamOuija):
         self.target_reader, self.target_writer = await asyncio.open_connection(self.remote_host, self.remote_port)
 
         message = Message(token=self.tuning.token)
-        data = message.binary(fernet=self.tuning.fernet, entropy=self.tuning.entropy)
+        data = message.binary(cipher=self.tuning.cipher, entropy=self.tuning.entropy)
         self.writer.write(data)
         await self.writer.drain()
 
