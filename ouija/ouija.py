@@ -36,14 +36,14 @@ class StreamOuija:
                 break
 
             if not crypt:
-                self.telemetry.recv(data=data)
+                self.telemetry.recv(data=data, entropy=self.tuning.entropy)
             data = Message.encrypt(data=data, fernet=self.tuning.fernet) if crypt \
                 else Message.decrypt(data=data, fernet=self.tuning.fernet)
 
             writer.write(data)
             await writer.drain()
             if crypt:
-                self.telemetry.send(data=data)
+                self.telemetry.send(data=data, entropy=self.tuning.entropy)
 
         self.sync.clear()
 
@@ -156,7 +156,7 @@ class DatagramOuija:
 
     async def send(self, *, data: bytes) -> None:
         await self.on_send(data=data)
-        self.telemetry.send(data=data)
+        self.telemetry.send(data=data, entropy=self.tuning.entropy)
 
     def packet_binary(self, *, packet: Packet) -> bytes:
         return packet.binary(fernet=self.tuning.fernet)
@@ -185,7 +185,7 @@ class DatagramOuija:
         raise NotImplementedError
 
     async def process_wrapped(self, *, data: bytes) -> None:
-        self.telemetry.recv(data=data)
+        self.telemetry.recv(data=data, entropy=self.tuning.entropy)
         packet = Packet.packet(data=data, fernet=self.tuning.fernet)
 
         match packet.phase:

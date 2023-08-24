@@ -20,6 +20,7 @@ async def main() -> None:
     tuning = Tuning(
         fernet=Fernet('bdDmN4VexpDvTrs6gw8xTzaFvIBobFg1Cx2McFB1RmI='),
         token='secret',
+        entropy=True,
         serving_timeout=20.0,
         tcp_buffer=1024,
         tcp_timeout=1.0,

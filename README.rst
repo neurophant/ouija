@@ -24,6 +24,7 @@ Requirements
 * Python 3.11
 * pbjson 1.18.0
 * cryptography 41.0.2
+* numpy 1.25.2
 
 Install
 -------

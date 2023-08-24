@@ -30,7 +30,7 @@ setup(
     ],
     keywords='asyncio http https tcp udp proxy tunnel relay network encrypted security censorship',
     packages=['ouija'],
-    install_requires=['cryptography>=41.0.2', 'pbjson>=1.18.0'],
+    install_requires=['cryptography>=41.0.2', 'pbjson>=1.18.0', 'numpy>=1.25.2'],
     entry_points={
         'console_scripts': [
             'ouija = ouija.server:main',

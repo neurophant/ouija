@@ -7,6 +7,7 @@ from cryptography.fernet import Fernet
 class StreamTuning:
     fernet: Fernet
     token: str
+    entropy: bool
     serving_timeout: float
     tcp_buffer: int
     tcp_timeout: float
@@ -17,6 +18,7 @@ class StreamTuning:
 class DatagramTuning:
     fernet: Fernet
     token: str
+    entropy: bool
     serving_timeout: float
     tcp_buffer: int
     tcp_timeout: float
