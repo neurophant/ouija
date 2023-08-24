@@ -6,7 +6,7 @@ import logging
 
 from cryptography.fernet import Fernet
 
-from ouija import StreamRelay as Relay, StreamTuning as Tuning, StreamTelemetry as Telemetry
+from ouija import StreamRelay as Relay, StreamTuning as Tuning, StreamTelemetry as Telemetry, SpaceEntropy
 
 
 logging.basicConfig(
@@ -20,7 +20,7 @@ async def main() -> None:
     tuning = Tuning(
         fernet=Fernet('bdDmN4VexpDvTrs6gw8xTzaFvIBobFg1Cx2McFB1RmI='),
         token='secret',
-        entropy=True,
+        entropy=SpaceEntropy(every=5),
         serving_timeout=20.0,
         tcp_buffer=1024,
         tcp_timeout=1.0,

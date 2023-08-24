@@ -1,13 +1,16 @@
 from dataclasses import dataclass
+from typing import Optional
 
 from cryptography.fernet import Fernet
+
+from .entropy import Entropy
 
 
 @dataclass(kw_only=True)
 class StreamTuning:
     fernet: Fernet
     token: str
-    entropy: bool
+    entropy: Optional[Entropy]
     serving_timeout: float
     tcp_buffer: int
     tcp_timeout: float
@@ -18,7 +21,7 @@ class StreamTuning:
 class DatagramTuning:
     fernet: Fernet
     token: str
-    entropy: bool
+    entropy: Optional[Entropy]
     serving_timeout: float
     tcp_buffer: int
     tcp_timeout: float

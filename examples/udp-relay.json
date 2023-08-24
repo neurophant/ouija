@@ -9,7 +9,7 @@
   "proxy_port": 50000,
   "key": "bdDmN4VexpDvTrs6gw8xTzaFvIBobFg1Cx2McFB1RmI=",
   "token": "secret",
-  "entropy": true,
+  "entropy_every": 5,
   "serving_timeout": 20.0,
   "tcp_buffer": 1024,
   "tcp_timeout": 1.0,

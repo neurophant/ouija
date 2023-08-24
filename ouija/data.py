@@ -8,6 +8,8 @@ from typing import Optional
 import pbjson
 from cryptography.fernet import Fernet
 
+from .entropy import Entropy
+
 
 HTTP_PORT = 80
 HTTPS_PORT = 443
@@ -73,25 +75,50 @@ class Message:
     port: Optional[int] = None
 
     @staticmethod
-    def message(*, data: bytes, fernet: Fernet) -> 'Message':
-        json = pbjson.loads(fernet.decrypt(data[:-len(SEPARATOR)]))
+    def message(*, data: bytes, fernet: Fernet, entropy: Optional[Entropy]) -> 'Message':
+        data = data[:-len(SEPARATOR)]
+
+        if entropy:
+            data = entropy.increase(data=data)
+
+        data = fernet.decrypt(data)
+
+        json_dict = pbjson.loads(data)
         return Message(
-            token=json.get(MAPPING['token']),
-            host=json.get(MAPPING['host'], None),
-            port=json.get(MAPPING['port'], None),
+            token=json_dict.get(MAPPING['token']),
+            host=json_dict.get(MAPPING['host'], None),
+            port=json_dict.get(MAPPING['port'], None),
         )
 
-    def binary(self, *, fernet: Fernet) -> bytes:
-        json = {MAPPING[k]: v for k, v in self.__dict__.items() if v is not None}
-        return fernet.encrypt(pbjson.dumps(json)) + SEPARATOR
+    def binary(self, *, fernet: Fernet, entropy: Optional[Entropy]) -> bytes:
+        json_dict = {MAPPING[k]: v for k, v in self.__dict__.items() if v is not None}
+
+        data = fernet.encrypt(pbjson.dumps(json_dict))
+
+        if entropy:
+            data = entropy.decrease(data=data)
+
+        return data + SEPARATOR
 
     @staticmethod
-    def encrypt(*, data: bytes, fernet: Fernet) -> bytes:
-        return fernet.encrypt(data) + SEPARATOR
+    def encrypt(*, data: bytes, fernet: Fernet, entropy: Optional[Entropy]) -> bytes:
+        if entropy:
+            data = entropy.decrease(data=data)
+
+        data = fernet.encrypt(data)
+
+        return data + SEPARATOR
 
     @staticmethod
-    def decrypt(*, data: bytes, fernet: Fernet) -> bytes:
-        return fernet.decrypt(data[:-len(SEPARATOR)])
+    def decrypt(*, data: bytes, fernet: Fernet, entropy: Optional[Entropy]) -> bytes:
+        data = data[:-len(SEPARATOR)]
+
+        if entropy:
+            data = entropy.increase(data=data)
+
+        data = fernet.decrypt(data)
+
+        return data
 
 
 class Phase(IntEnum):
@@ -112,22 +139,33 @@ class Packet:
     drain: Optional[bool] = None
 
     @staticmethod
-    def packet(*, data: bytes, fernet: Fernet) -> 'Packet':
-        json = pbjson.loads(fernet.decrypt(base64.urlsafe_b64encode(data)))
+    def packet(*, data: bytes, fernet: Fernet, entropy: Optional[Entropy]) -> 'Packet':
+        if entropy:
+            data = entropy.increase(data=data)
+
+        data = fernet.decrypt(base64.urlsafe_b64encode(data))
+
+        json_dict = pbjson.loads(data)
         return Packet(
-            phase=Phase(json.get(MAPPING['phase'])),
-            ack=json.get(MAPPING['ack']),
-            token=json.get(MAPPING['token'], None),
-            host=json.get(MAPPING['host'], None),
-            port=json.get(MAPPING['port'], None),
-            seq=json.get(MAPPING['seq'], None),
-            data=json.get(MAPPING['data'], None),
-            drain=json.get(MAPPING['drain'], None),
+            phase=Phase(json_dict.get(MAPPING['phase'])),
+            ack=json_dict.get(MAPPING['ack']),
+            token=json_dict.get(MAPPING['token'], None),
+            host=json_dict.get(MAPPING['host'], None),
+            port=json_dict.get(MAPPING['port'], None),
+            seq=json_dict.get(MAPPING['seq'], None),
+            data=json_dict.get(MAPPING['data'], None),
+            drain=json_dict.get(MAPPING['drain'], None),
         )
 
-    def binary(self, *, fernet: Fernet) -> bytes:
-        json = {MAPPING[k]: v for k, v in self.__dict__.items() if v is not None}
-        return base64.urlsafe_b64decode(fernet.encrypt(pbjson.dumps(json)))
+    def binary(self, *, fernet: Fernet, entropy: Optional[Entropy]) -> bytes:
+        json_dict = {MAPPING[k]: v for k, v in self.__dict__.items() if v is not None}
+
+        data = base64.urlsafe_b64decode(fernet.encrypt(pbjson.dumps(json_dict)))
+
+        if entropy:
+            data = entropy.decrease(data=data)
+
+        return data
 
 
 @dataclass(kw_only=True)

@@ -1,7 +1,10 @@
 import json
 from enum import StrEnum
+from typing import Optional
 
 from cryptography.fernet import Fernet
+
+from .entropy import SpaceEntropy
 
 
 class Mode(StrEnum):
@@ -19,21 +22,22 @@ class Config:
     mode: Mode
     debug: bool
     monitor: bool
-    relay_host: str
-    relay_port: int
+    relay_host: Optional[str]
+    relay_port: Optional[int]
     proxy_host: str
     proxy_port: int
     fernet: Fernet
     token: str
+    entropy_every: Optional[int]
     serving_timeout: float
     tcp_buffer: int
     tcp_timeout: float
-    message_timeout: float
-    udp_payload: int
-    udp_timeout: float
-    udp_retries: int
-    udp_capacity: int
-    udp_resend_sleep: float
+    message_timeout: Optional[float]
+    udp_payload: Optional[int]
+    udp_timeout: Optional[float]
+    udp_retries: Optional[int]
+    udp_capacity: Optional[int]
+    udp_resend_sleep: Optional[float]
 
     def __init__(self, *, path: str) -> None:
         with open(path, 'r') as fp:
@@ -51,6 +55,7 @@ class Config:
 
         self.fernet = Fernet(json_dict.get('key'))
         self.token = json_dict.get('token')
+        self.entropy_every = json_dict.get('entropy_every', None)
         self.serving_timeout = json_dict.get('serving_timeout')
         self.tcp_buffer = json_dict.get('tcp_buffer')
         self.tcp_timeout = json_dict.get('tcp_timeout')

@@ -1,7 +1,8 @@
 from dataclasses import dataclass
 import datetime
+from typing import Optional
 
-from .entropy import calculate
+from .entropy import Entropy
 
 
 @dataclass(kw_only=True)
@@ -37,21 +38,21 @@ class StreamTelemetry:
     def close(self) -> None:
         self.closed += 1
 
-    def send(self, *, data: bytes, entropy: bool) -> None:
+    def send(self, *, data: bytes, entropy: Optional[Entropy]) -> None:
         self.bytes_sent += len(data)
 
         if entropy:
-            value = calculate(data=data)
+            value = entropy.calculate(data=data)
             if value < self.entropy_min or self.entropy_min == 0.0:
                 self.entropy_min = value
             if value > self.entropy_max:
                 self.entropy_max = value
 
-    def recv(self, *, data: bytes, entropy: bool) -> None:
+    def recv(self, *, data: bytes, entropy: Optional[Entropy]) -> None:
         self.bytes_recv += len(data)
 
         if entropy:
-            value = calculate(data=data)
+            value = entropy.calculate(data=data)
             if value < self.entropy_min or self.entropy_min == 0.0:
                 self.entropy_min = value
             if value > self.entropy_max:
@@ -117,7 +118,7 @@ class DatagramTelemetry:
     def close(self) -> None:
         self.closed += 1
 
-    def send(self, *, data: bytes, entropy: bool) -> None:
+    def send(self, *, data: bytes, entropy: Optional[Entropy]) -> None:
         self.packets_sent += 1
         self.bytes_sent += len(data)
 
@@ -127,13 +128,13 @@ class DatagramTelemetry:
             self.max_packet_size = len(data)
 
         if entropy:
-            value = calculate(data=data)
+            value = entropy.calculate(data=data)
             if value < self.entropy_min or self.entropy_min == 0.0:
                 self.entropy_min = value
             if value > self.entropy_max:
                 self.entropy_max = value
 
-    def recv(self, *, data: bytes, entropy: bool) -> None:
+    def recv(self, *, data: bytes, entropy: Optional[Entropy]) -> None:
         self.packets_recv += 1
         self.bytes_recv += len(data)
 
@@ -143,7 +144,7 @@ class DatagramTelemetry:
             self.max_packet_size = len(data)
 
         if entropy:
-            value = calculate(data=data)
+            value = entropy.calculate(data=data)
             if value < self.entropy_min or self.entropy_min == 0.0:
                 self.entropy_min = value
             if value > self.entropy_max:

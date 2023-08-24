@@ -37,8 +37,8 @@ class StreamOuija:
 
             if not crypt:
                 self.telemetry.recv(data=data, entropy=self.tuning.entropy)
-            data = Message.encrypt(data=data, fernet=self.tuning.fernet) if crypt \
-                else Message.decrypt(data=data, fernet=self.tuning.fernet)
+            data = Message.encrypt(data=data, fernet=self.tuning.fernet, entropy=self.tuning.entropy) if crypt \
+                else Message.decrypt(data=data, fernet=self.tuning.fernet, entropy=self.tuning.entropy)
 
             writer.write(data)
             await writer.drain()
@@ -159,7 +159,7 @@ class DatagramOuija:
         self.telemetry.send(data=data, entropy=self.tuning.entropy)
 
     def packet_binary(self, *, packet: Packet) -> bytes:
-        return packet.binary(fernet=self.tuning.fernet)
+        return packet.binary(fernet=self.tuning.fernet, entropy=self.tuning.entropy)
 
     async def send_packet(self, *, packet: Packet) -> None:
         await self.send(data=self.packet_binary(packet=packet))
@@ -186,7 +186,7 @@ class DatagramOuija:
 
     async def process_wrapped(self, *, data: bytes) -> None:
         self.telemetry.recv(data=data, entropy=self.tuning.entropy)
-        packet = Packet.packet(data=data, fernet=self.tuning.fernet)
+        packet = Packet.packet(data=data, fernet=self.tuning.fernet, entropy=self.tuning.entropy)
 
         match packet.phase:
             case Phase.OPEN:

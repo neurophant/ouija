@@ -2,6 +2,7 @@ import asyncio
 import logging
 import sys
 
+from .entropy import SpaceEntropy
 from .tuning import StreamTuning, DatagramTuning
 from .telemetry import StreamTelemetry, DatagramTelemetry
 from .relay import StreamRelay, DatagramRelay
@@ -22,12 +23,15 @@ async def main_async() -> None:
         level=logging.DEBUG if config.debug else logging.ERROR,
     )
 
+    entropy = SpaceEntropy(every=config.entropy_every) if config.entropy_every else None
+
     match config.protocol:
         case Protocol.TCP:
             telemetry_class, relay_class, proxy_class = StreamTelemetry, StreamRelay, StreamProxy
             tuning = StreamTuning(
                 fernet=config.fernet,
                 token=config.token,
+                entropy=entropy,
                 serving_timeout=config.serving_timeout,
                 tcp_buffer=config.tcp_buffer,
                 tcp_timeout=config.tcp_timeout,
@@ -38,6 +42,7 @@ async def main_async() -> None:
             tuning = DatagramTuning(
                 fernet=config.fernet,
                 token=config.token,
+                entropy=entropy,
                 serving_timeout=config.serving_timeout,
                 tcp_buffer=config.tcp_buffer,
                 tcp_timeout=config.tcp_timeout,
