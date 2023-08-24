@@ -14,6 +14,9 @@ class StreamTelemetry:
     bytes_recv: int = 0
     entropy_min: float = 0.0
     entropy_max: float = 0.0
+    entropy_count: int = 0
+    entropy_sum: float = 0.0
+    entropy_avg: float = 0.0
     token_errors: int = 0
     timeout_errors: int = 0
     connection_errors: int = 0
@@ -25,7 +28,7 @@ class StreamTelemetry:
             f'\tactive: {self.active:,}\n' \
             f'\topened|closed: {self.opened:,}|{self.closed:,}\n' \
             f'\tbytes sent|received: {self.bytes_sent:,}|{self.bytes_recv:,}\n' \
-            f'\tentropy min|max: {self.entropy_min}|{self.entropy_max}\n' \
+            f'\tentropy min|avg|max: {self.entropy_min:.4f}|{self.entropy_avg:.4f}|{self.entropy_max:.4f}\n' \
             f'\ttoken|timeout|connection|serving errors: {self.token_errors:,}|{self.timeout_errors:,}' \
             f'|{self.connection_errors:,}|{self.serving_errors:,}'
 
@@ -48,6 +51,10 @@ class StreamTelemetry:
             if value > self.entropy_max:
                 self.entropy_max = value
 
+            self.entropy_count += 1
+            self.entropy_sum += value
+            self.entropy_avg = self.entropy_sum / self.entropy_count if self.entropy_count > 0 else 0.0
+
     def recv(self, *, data: bytes, entropy: Optional[Entropy]) -> None:
         self.bytes_recv += len(data)
 
@@ -57,6 +64,10 @@ class StreamTelemetry:
                 self.entropy_min = value
             if value > self.entropy_max:
                 self.entropy_max = value
+
+            self.entropy_count += 1
+            self.entropy_sum += value
+            self.entropy_avg = self.entropy_sum / self.entropy_count if self.entropy_count > 0 else 0.0
 
     def token_error(self) -> None:
         self.token_errors += 1
@@ -84,6 +95,9 @@ class DatagramTelemetry:
     max_packet_size: int = 0
     entropy_min: float = 0.0
     entropy_max: float = 0.0
+    entropy_count: int = 0
+    entropy_sum: float = 0.0
+    entropy_avg: float = 0.0
     processing_errors: int = 0
     token_errors: int = 0
     type_errors: int = 0
@@ -101,8 +115,8 @@ class DatagramTelemetry:
             f'\topened|closed: {self.opened:,}|{self.closed:,}\n' \
             f'\tpackets sent|received: {self.packets_sent:,}|{self.packets_recv:,}\n' \
             f'\tbytes sent|received: {self.bytes_sent:,}|{self.bytes_recv:,}\n' \
-            f'\tmin|max packet size: {self.min_packet_size}|{self.max_packet_size}\n' \
-            f'\tentropy min|max: {self.entropy_min}|{self.entropy_max}\n' \
+            f'\tmin|max packet size: {self.min_packet_size:,}|{self.max_packet_size:,}\n' \
+            f'\tentropy min|avg|max: {self.entropy_min:.4f}|{self.entropy_avg:.4f}|{self.entropy_max:.4f}\n' \
             f'\tprocessing|token|type errors: {self.processing_errors:,}|{self.token_errors:,}' \
             f'|{self.type_errors:,}\n' \
             f'\ttimeout|connection|serving|resending errors: {self.timeout_errors:,}|{self.connection_errors:,}' \
@@ -134,6 +148,10 @@ class DatagramTelemetry:
             if value > self.entropy_max:
                 self.entropy_max = value
 
+            self.entropy_count += 1
+            self.entropy_sum += value
+            self.entropy_avg = self.entropy_sum / self.entropy_count if self.entropy_count > 0 else 0.0
+
     def recv(self, *, data: bytes, entropy: Optional[Entropy]) -> None:
         self.packets_recv += 1
         self.bytes_recv += len(data)
@@ -149,6 +167,10 @@ class DatagramTelemetry:
                 self.entropy_min = value
             if value > self.entropy_max:
                 self.entropy_max = value
+
+            self.entropy_count += 1
+            self.entropy_sum += value
+            self.entropy_avg = self.entropy_sum / self.entropy_count if self.entropy_count > 0 else 0.0
 
     def processing_error(self) -> None:
         self.processing_errors += 1
