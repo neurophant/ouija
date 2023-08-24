@@ -5,7 +5,7 @@ from typing import Union
 from .tuning import StreamTuning, DatagramTuning
 from .connector import StreamConnector, DatagramConnector
 from .telemetry import StreamTelemetry, DatagramTelemetry
-from .data import Parser, SEPARATOR
+from .data import Parser, SEPARATOR, HTTP_PORT, HTTPS_PORT, CONNECT
 from .log import logger
 
 
@@ -36,15 +36,16 @@ class Relay:
         self.proxy_port = proxy_port
         self.connectors = dict()
 
-    async def https_handler(
+    async def request_handler(
             self,
             *,
             reader: asyncio.StreamReader,
             writer: asyncio.StreamWriter,
             remote_host: str,
             remote_port: int,
+            https: bool,
     ) -> None:
-        """HTTPS handler - should be overridden with protocol-based implementation
+        """Request handler - should be overridden with protocol-based implementation
         :returns: None"""
         raise NotImplementedError
 
@@ -53,15 +54,18 @@ class Relay:
         request = Parser(data=data)
         if request.error:
             logger.error('Parse error')
-        elif request.method == 'CONNECT':
-            await self.https_handler(
-                reader=reader,
-                writer=writer,
-                remote_host=request.host,
-                remote_port=request.port,
-            )
-        else:
-            logger.error(f'{request.method} method is not supported')
+            return
+
+        if request.method != CONNECT:
+            reader.feed_data(data)
+
+        await self.request_handler(
+            reader=reader,
+            writer=writer,
+            remote_host=request.host,
+            remote_port=request.port or (HTTPS_PORT if request.method == CONNECT else HTTP_PORT),
+            https=True if request.method == CONNECT else False,
+        )
 
     async def connect(self, *, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
         try:
@@ -100,13 +104,14 @@ class Relay:
 
 
 class StreamRelay(Relay):
-    async def https_handler(
+    async def request_handler(
             self,
             *,
             reader: asyncio.StreamReader,
             writer: asyncio.StreamWriter,
             remote_host: str,
             remote_port: int,
+            https: bool,
     ) -> None:
         connector = StreamConnector(
             telemetry=self.telemetry,
@@ -118,18 +123,20 @@ class StreamRelay(Relay):
             proxy_port=self.proxy_port,
             remote_host=remote_host,
             remote_port=remote_port,
+            https=https,
         )
         await connector.serve()
 
 
 class DatagramRelay(Relay):
-    async def https_handler(
+    async def request_handler(
             self,
             *,
             reader: asyncio.StreamReader,
             writer: asyncio.StreamWriter,
             remote_host: str,
             remote_port: int,
+            https: bool,
     ) -> None:
         connector = DatagramConnector(
             telemetry=self.telemetry,
@@ -141,5 +148,6 @@ class DatagramRelay(Relay):
             proxy_port=self.proxy_port,
             remote_host=remote_host,
             remote_port=remote_port,
+            https=https,
         )
         await connector.serve()

@@ -19,6 +19,7 @@ class StreamConnector(StreamOuija):
     uid: str
     proxy_host: str
     proxy_port: int
+    https: bool
 
     def __init__(
             self,
@@ -32,6 +33,7 @@ class StreamConnector(StreamOuija):
             proxy_port: int,
             remote_host: str,
             remote_port: int,
+            https: bool,
     ) -> None:
         self.telemetry = telemetry
         self.tuning = tuning
@@ -44,6 +46,7 @@ class StreamConnector(StreamOuija):
         self.proxy_port = proxy_port
         self.remote_host = remote_host
         self.remote_port = remote_port
+        self.https = https
         self.target_reader = None
         self.target_writer = None
         self.opened = asyncio.Event()
@@ -66,8 +69,9 @@ class StreamConnector(StreamOuija):
         if message.token != self.tuning.token:
             raise TokenError
 
-        self.writer.write(data=CONNECTION_ESTABLISHED)
-        await self.writer.drain()
+        if self.https:
+            self.writer.write(data=CONNECTION_ESTABLISHED)
+            await self.writer.drain()
 
         self.relay.connectors[self.uid] = self
 
@@ -81,6 +85,7 @@ class DatagramConnector(DatagramOuija, asyncio.DatagramProtocol):
     uid: str
     proxy_host: str
     proxy_port: int
+    https: bool
 
     def __init__(
             self,
@@ -94,6 +99,7 @@ class DatagramConnector(DatagramOuija, asyncio.DatagramProtocol):
             proxy_port: int,
             remote_host: str,
             remote_port: int,
+            https: bool,
     ) -> None:
         self.transport = None
         self.telemetry = telemetry
@@ -106,6 +112,7 @@ class DatagramConnector(DatagramOuija, asyncio.DatagramProtocol):
         self.proxy_port = proxy_port
         self.remote_host = remote_host
         self.remote_port = remote_port
+        self.https = https
         self.opened = asyncio.Event()
         self.sync = asyncio.Event()
         self.sent_buf = dict()
@@ -137,8 +144,10 @@ class DatagramConnector(DatagramOuija, asyncio.DatagramProtocol):
         if not packet.ack or self.opened.is_set():
             raise OnOpenError
 
-        self.writer.write(data=CONNECTION_ESTABLISHED)
-        await self.writer.drain()
+        if self.https:
+            self.writer.write(data=CONNECTION_ESTABLISHED)
+            await self.writer.drain()
+
         self.opened.set()
         self.relay.connectors[self.uid] = self
 

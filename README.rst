@@ -1,7 +1,7 @@
 Ouija
 =====
 
-Python relay-proxy server and library to build reliable TCP and UDP tunnels for TCP traffic
+Python relay/proxy server and library to build reliable encrypted TCP/UDP tunnels for TCP traffic
 
 |pypi|
 
@@ -12,7 +12,7 @@ Python relay-proxy server and library to build reliable TCP and UDP tunnels for 
 Features
 --------
 
-Hides TCP traffic in encrypted TCP/UDP traffic between relay and proxy servers
+Hides TCP traffic in encrypted TCP/UDP tunnel between relay and proxy servers
 
 .. image:: https://raw.githubusercontent.com/neurophant/ouija/main/ouija.png
     :alt: TCP/UDP tunneling
@@ -41,7 +41,7 @@ Usage
 
     ouija <config.json>
 
-tcp-relay.json - HTTPS proxy server interface with TCP connectors:
+tcp-relay.json - TCP relay server - HTTP/HTTPS proxy server interface with TCP connectors:
 
 .. code-block:: json
 
@@ -81,7 +81,7 @@ tcp-proxy.json - TCP-relayed proxy server:
       "message_timeout": 5.0
     }
 
-udp-relay.json - HTTPS proxy server interface with UDP connectors:
+udp-relay.json - UDP relay server - HTTP/HTTPS proxy server interface with UDP connectors:
 
 .. code-block:: json
 
@@ -173,7 +173,7 @@ Tuning - UDP
 Library usage
 -------------
 
-stream-relay.py - HTTPS proxy server interface with TCP connectors:
+stream-relay.py - TCP relay server - HTTP/HTTPS proxy server interface with TCP connectors:
 
 .. code-block:: python
 
@@ -245,7 +245,7 @@ stream-proxy.py - TCP-relayed proxy server:
         loop.run_until_complete(main())
         loop.run_forever()
 
-datagram-relay.py - HTTPS proxy server interface with UDP connectors:
+datagram-relay.py - UDP relay server - HTTPS proxy server interface with UDP connectors:
 
 .. code-block:: python
 

@@ -9,6 +9,9 @@ import pbjson
 from cryptography.fernet import Fernet
 
 
+HTTP_PORT = 80
+HTTPS_PORT = 443
+CONNECT = 'CONNECT'
 SEPARATOR = b'\r\n\r\n'
 CONNECTION_ESTABLISHED = b'HTTP/1.1 200 Connection Established\r\n\r\n'
 

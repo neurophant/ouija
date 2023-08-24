@@ -10,8 +10,8 @@ with open(path.join(here, 'README.rst'), encoding='utf-8') as f:
 
 setup(
     name='ouija',
-    version='1.2.4',
-    description='Python relay-proxy server and library to build reliable TCP and UDP tunnels for TCP traffic',
+    version='1.3.0',
+    description='Python relay/proxy server and library to build reliable encrypted TCP/UDP tunnels for TCP traffic',
     long_description=long_description,
     url='https://github.com/neurophant/ouija/',
     author='Anton Smolin',
@@ -28,7 +28,7 @@ setup(
         'Topic :: Internet :: Proxy Servers',
         'Topic :: Software Development :: Libraries',
     ],
-    keywords='asyncio https tcp udp proxy tunnel relay network encrypted security censorship',
+    keywords='asyncio http https tcp udp proxy tunnel relay network encrypted security censorship',
     packages=['ouija'],
     install_requires=['cryptography>=41.0.2', 'pbjson>=1.18.0'],
     entry_points="""
