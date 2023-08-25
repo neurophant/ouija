@@ -19,7 +19,7 @@ async def main() -> None:
     tuning = Tuning(
         cipher=FernetCipher(key='bdDmN4VexpDvTrs6gw8xTzaFvIBobFg1Cx2McFB1RmI='),
         entropy=SimpleEntropy(rate=5),
-        token='secret',
+        token='395f249c-343a-4f92-9129-68c6d83b5f55',
         serving_timeout=20.0,
         tcp_buffer=1024,
         tcp_timeout=1.0,

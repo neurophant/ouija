@@ -29,7 +29,8 @@ class Config:
     tcp_buffer: int
     tcp_timeout: float
     message_timeout: Optional[float]
-    udp_payload: Optional[int]
+    udp_min_payload: Optional[int]
+    udp_max_payload: Optional[int]
     udp_timeout: Optional[float]
     udp_retries: Optional[int]
     udp_capacity: Optional[int]
@@ -56,7 +57,8 @@ class Config:
         self.tcp_buffer = json_dict.get('tcp_buffer')
         self.tcp_timeout = json_dict.get('tcp_timeout')
         self.message_timeout = json_dict.get('message_timeout', None)
-        self.udp_payload = json_dict.get('udp_payload', None)
+        self.udp_min_payload = json_dict.get('udp_min_payload', None)
+        self.udp_max_payload = json_dict.get('udp_max_payload', None)
         self.udp_timeout = json_dict.get('udp_timeout', None)
         self.udp_retries = json_dict.get('udp_retries', None)
         self.udp_capacity = json_dict.get('udp_capacity', None)

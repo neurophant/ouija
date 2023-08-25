@@ -93,6 +93,9 @@ class DatagramTelemetry:
     bytes_recv: int = 0
     min_packet_size: int = 0
     max_packet_size: int = 0
+    packet_count: int = 0
+    packet_sum: int = 0
+    avg_packet_size: int = 0
     entropy_min: float = 0.0
     entropy_max: float = 0.0
     entropy_count: int = 0
@@ -115,7 +118,7 @@ class DatagramTelemetry:
             f'\topened|closed: {self.opened:,}|{self.closed:,}\n' \
             f'\tpackets sent|received: {self.packets_sent:,}|{self.packets_recv:,}\n' \
             f'\tbytes sent|received: {self.bytes_sent:,}|{self.bytes_recv:,}\n' \
-            f'\tmin|max packet size: {self.min_packet_size:,}|{self.max_packet_size:,}\n' \
+            f'\tmin|avg|max packet size: {self.min_packet_size:,}|{self.avg_packet_size:,}|{self.max_packet_size:,}\n' \
             f'\tentropy min|avg|max: {self.entropy_min:.4f}|{self.entropy_avg:.4f}|{self.entropy_max:.4f}\n' \
             f'\tprocessing|token|type errors: {self.processing_errors:,}|{self.token_errors:,}' \
             f'|{self.type_errors:,}\n' \
@@ -135,6 +138,9 @@ class DatagramTelemetry:
     def send(self, *, data: bytes, entropy: Optional[Entropy]) -> None:
         self.packets_sent += 1
         self.bytes_sent += len(data)
+        self.packet_count += 1
+        self.packet_sum += len(data)
+        self.avg_packet_size = int(self.packet_sum / self.packet_count)
 
         if len(data) < self.min_packet_size or self.min_packet_size == 0:
             self.min_packet_size = len(data)
@@ -155,6 +161,9 @@ class DatagramTelemetry:
     def recv(self, *, data: bytes, entropy: Optional[Entropy]) -> None:
         self.packets_recv += 1
         self.bytes_recv += len(data)
+        self.packet_count += 1
+        self.packet_sum += len(data)
+        self.avg_packet_size = int(self.packet_sum / self.packet_count)
 
         if len(data) < self.min_packet_size or self.min_packet_size == 0:
             self.min_packet_size = len(data)

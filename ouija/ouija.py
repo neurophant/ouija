@@ -1,5 +1,6 @@
 import asyncio
 import time
+from random import randrange
 from typing import Optional
 
 from .exception import TokenError, SendRetryError, BufOverloadError, OnOpenError, OnServeError
@@ -317,17 +318,21 @@ class DatagramOuija:
             if not data:
                 break
 
-            for idx in range(0, len(data), self.tuning.udp_payload):
+            idx = 0
+            while idx < len(data):
+                c_len = randrange(self.tuning.udp_min_payload, self.tuning.udp_max_payload + 1)
+
                 data_packet = Packet(
                     phase=Phase.DATA,
                     ack=False,
                     seq=self.sent_seq,
-                    data=data[idx:idx + self.tuning.udp_payload],
-                    drain=True if len(data) - idx <= self.tuning.udp_payload else False,
+                    data=data[idx:idx + c_len],
+                    drain=True if idx + c_len >= len(data) else False,
                 )
                 self.sent_buf[self.sent_seq] = Sent(data=self.packet_binary(packet=data_packet))
                 await self.send_packet(packet=data_packet)
                 self.sent_seq += 1
+                idx += c_len
 
                 if len(self.sent_buf) >= self.tuning.udp_capacity:
                     raise BufOverloadError
