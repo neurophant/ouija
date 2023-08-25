@@ -6,7 +6,7 @@ from .exception import TokenError, OnOpenError, SendRetryError, OnServeError
 from .data import Message, SEPARATOR, CONNECTION_ESTABLISHED, Packet, Phase
 from .log import logger
 from .ouija import StreamOuija, DatagramOuija
-from .telemetry import StreamTelemetry, DatagramTelemetry
+from .telemetry import Telemetry
 from .tuning import StreamTuning, DatagramTuning
 
 from typing import TYPE_CHECKING
@@ -24,7 +24,7 @@ class StreamConnector(StreamOuija):
     def __init__(
             self,
             *,
-            telemetry: StreamTelemetry,
+            telemetry: Telemetry,
             tuning: StreamTuning,
             relay: 'StreamRelay',
             reader: asyncio.StreamReader,
@@ -90,7 +90,7 @@ class DatagramConnector(DatagramOuija, asyncio.DatagramProtocol):
     def __init__(
             self,
             *,
-            telemetry: DatagramTelemetry,
+            telemetry: Telemetry,
             tuning: DatagramTuning,
             relay: 'DatagramRelay',
             reader: asyncio.StreamReader,

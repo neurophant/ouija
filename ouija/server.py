@@ -5,7 +5,7 @@ import sys
 from .cipher import FernetCipher
 from .entropy import SimpleEntropy
 from .tuning import StreamTuning, DatagramTuning
-from .telemetry import StreamTelemetry, DatagramTelemetry
+from .telemetry import Telemetry
 from .relay import StreamRelay, DatagramRelay
 from .proxy import StreamProxy, DatagramProxy
 from .config import Config, Mode, Protocol
@@ -29,7 +29,7 @@ async def main_async() -> None:
 
     match config.protocol:
         case Protocol.TCP:
-            telemetry_class, relay_class, proxy_class = StreamTelemetry, StreamRelay, StreamProxy
+            relay_class, proxy_class = StreamRelay, StreamProxy
             tuning = StreamTuning(
                 cipher=cipher,
                 entropy=entropy,
@@ -40,7 +40,7 @@ async def main_async() -> None:
                 message_timeout=config.message_timeout,
             )
         case Protocol.UDP:
-            telemetry_class, relay_class, proxy_class = DatagramTelemetry, DatagramRelay, DatagramProxy
+            relay_class, proxy_class = DatagramRelay, DatagramProxy
             tuning = DatagramTuning(
                 cipher=cipher,
                 entropy=entropy,
@@ -61,7 +61,7 @@ async def main_async() -> None:
     match config.mode:
         case Mode.RELAY:
             server = relay_class(
-                telemetry=telemetry_class(),
+                telemetry=Telemetry(),
                 tuning=tuning,
                 relay_host=config.relay_host,
                 relay_port=config.relay_port,
@@ -70,7 +70,7 @@ async def main_async() -> None:
             )
         case Mode.PROXY:
             server = proxy_class(
-                telemetry=telemetry_class(),
+                telemetry=Telemetry(),
                 tuning=tuning,
                 proxy_host=config.proxy_host,
                 proxy_port=config.proxy_port,

@@ -4,12 +4,12 @@ from typing import Optional, Union
 
 from .link import StreamLink, DatagramLink
 from .tuning import StreamTuning, DatagramTuning
-from .telemetry import StreamTelemetry, DatagramTelemetry
+from .telemetry import Telemetry
 from .log import logger
 
 
 class Proxy:
-    telemetry: Union[StreamTelemetry, DatagramTelemetry]
+    telemetry: Telemetry
     tuning: Union[StreamTuning, DatagramTuning]
     proxy_host: str
     proxy_port: int
@@ -36,7 +36,7 @@ class StreamProxy(Proxy):
     def __init__(
             self,
             *,
-            telemetry: StreamTelemetry,
+            telemetry: Telemetry,
             tuning: StreamTuning,
             proxy_host: str,
             proxy_port: int,
@@ -85,7 +85,7 @@ class DatagramProxy(Proxy, asyncio.DatagramProtocol):
     def __init__(
             self,
             *,
-            telemetry: DatagramTelemetry,
+            telemetry: Telemetry,
             tuning: DatagramTuning,
             proxy_host: str,
             proxy_port: int,

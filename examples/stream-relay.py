@@ -4,8 +4,7 @@ sys.path.append('../')
 import asyncio
 import logging
 
-from ouija import StreamRelay as Relay, StreamTuning as Tuning, StreamTelemetry as Telemetry, SimpleEntropy, \
-    FernetCipher
+from ouija import StreamRelay as Relay, StreamTuning as Tuning, Telemetry, SimpleEntropy, FernetCipher
 
 
 logging.basicConfig(

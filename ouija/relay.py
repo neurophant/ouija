@@ -4,13 +4,13 @@ from typing import Union
 
 from .tuning import StreamTuning, DatagramTuning
 from .connector import StreamConnector, DatagramConnector
-from .telemetry import StreamTelemetry, DatagramTelemetry
+from .telemetry import Telemetry
 from .data import Parser, SEPARATOR, HTTP_PORT, HTTPS_PORT, CONNECT
 from .log import logger
 
 
 class Relay:
-    telemetry: Union[StreamTelemetry, DatagramTelemetry]
+    telemetry: Telemetry
     tuning: Union[StreamTuning, DatagramTuning]
     relay_host: str
     relay_port: int
@@ -21,7 +21,7 @@ class Relay:
     def __init__(
             self,
             *,
-            telemetry: Union[StreamTelemetry, DatagramTelemetry],
+            telemetry: Telemetry,
             tuning: Union[StreamTuning, DatagramTuning],
             relay_host: str,
             relay_port: int,

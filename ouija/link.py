@@ -4,7 +4,7 @@ import uuid
 from .exception import TokenError, OnOpenError, OnServeError
 from .data import Message, SEPARATOR, Packet, Phase
 from .ouija import StreamOuija, DatagramOuija
-from .telemetry import StreamTelemetry, DatagramTelemetry
+from .telemetry import Telemetry
 from .tuning import StreamTuning, DatagramTuning
 
 from typing import TYPE_CHECKING
@@ -19,7 +19,7 @@ class StreamLink(StreamOuija):
     def __init__(
             self,
             *,
-            telemetry: StreamTelemetry,
+            telemetry: Telemetry,
             tuning: StreamTuning,
             proxy: 'StreamProxy',
             reader: asyncio.StreamReader,
@@ -71,7 +71,7 @@ class DatagramLink(DatagramOuija):
     def __init__(
             self,
             *,
-            telemetry: DatagramTelemetry,
+            telemetry: Telemetry,
             tuning: DatagramTuning,
             proxy: 'DatagramProxy',
             addr: tuple[str, int],

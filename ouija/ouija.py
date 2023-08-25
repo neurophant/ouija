@@ -5,13 +5,13 @@ from typing import Optional
 
 from .exception import TokenError, SendRetryError, BufOverloadError, OnOpenError, OnServeError
 from .data import Message, SEPARATOR, Sent, Received, Packet, Phase
-from .telemetry import StreamTelemetry, DatagramTelemetry
+from .telemetry import Telemetry
 from .tuning import StreamTuning, DatagramTuning
 from .log import logger
 
 
 class StreamOuija:
-    telemetry: StreamTelemetry
+    telemetry: Telemetry
     tuning: StreamTuning
     crypt: bool
     reader: asyncio.StreamReader
@@ -133,7 +133,7 @@ class StreamOuija:
 
 
 class DatagramOuija:
-    telemetry: DatagramTelemetry
+    telemetry: Telemetry
     tuning: DatagramTuning
     reader: Optional[asyncio.StreamReader]
     writer: Optional[asyncio.StreamWriter]

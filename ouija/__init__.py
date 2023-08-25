@@ -4,7 +4,7 @@ __license__ = 'MIT'
 __version__ = '1.3.0'
 
 from .data import Parser, Message, Phase, Packet
-from .telemetry import StreamTelemetry, DatagramTelemetry
+from .telemetry import Telemetry
 from .tuning import StreamTuning, DatagramTuning
 from .ouija import StreamOuija, DatagramOuija
 from .connector import StreamConnector, DatagramConnector

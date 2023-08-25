@@ -4,8 +4,7 @@ sys.path.append('../')
 import asyncio
 import logging
 
-from ouija import DatagramProxy as Proxy, DatagramTelemetry as Telemetry, DatagramTuning as Tuning, SimpleEntropy, \
-    FernetCipher
+from ouija import DatagramProxy as Proxy, Telemetry, DatagramTuning as Tuning, SimpleEntropy, FernetCipher
 
 
 logging.basicConfig(
