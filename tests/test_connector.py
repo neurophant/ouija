@@ -137,14 +137,16 @@ async def test_datagram_connector_on_close_closing(datagram_connector_test, toke
 async def test_stream_connector_on_serve(
         stream_connector_test,
         token_test,
-        fernet_test,
         data_test,
         mocker: MockerFixture,
 ):
     mocked_open_connection = mocker.patch('ouija.connector.asyncio.open_connection')
     mocked_open_connection.return_value = (AsyncMock(), AsyncMock())
     mocked_wait_for = mocker.patch('ouija.connector.asyncio.wait_for')
-    mocked_wait_for.return_value = Message(token=token_test).binary(fernet=fernet_test)
+    mocked_wait_for.return_value = Message(token=token_test).binary(
+        cipher=stream_connector_test.tuning.cipher,
+        entropy=stream_connector_test.tuning.entropy,
+    )
 
     await stream_connector_test.on_serve()
 
@@ -159,7 +161,6 @@ async def test_stream_connector_on_serve(
 async def test_stream_connector_on_serve_timeouterror(
         stream_connector_test,
         token_test,
-        fernet_test,
         data_test,
         mocker: MockerFixture,
 ):
@@ -181,14 +182,16 @@ async def test_stream_connector_on_serve_timeouterror(
 @pytest.mark.xfail(raises=TokenError)
 async def test_stream_connector_on_serve_tokenerror(
         stream_connector_test,
-        fernet_test,
         data_test,
         mocker: MockerFixture,
 ):
     mocked_open_connection = mocker.patch('ouija.connector.asyncio.open_connection')
     mocked_open_connection.return_value = (AsyncMock(), AsyncMock())
     mocked_wait_for = mocker.patch('ouija.connector.asyncio.wait_for')
-    mocked_wait_for.return_value = Message(token='invalid').binary(fernet=fernet_test)
+    mocked_wait_for.return_value = Message(token='invalid').binary(
+        cipher=stream_connector_test.tuning.cipher,
+        entropy=stream_connector_test.tuning.entropy,
+    )
 
     await stream_connector_test.on_serve()
 

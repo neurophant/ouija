@@ -3,10 +3,25 @@ from typing import Optional
 from unittest.mock import AsyncMock
 
 import pytest
-from cryptography.fernet import Fernet
 
-from ouija import StreamTelemetry, DatagramTelemetry, StreamTuning, DatagramTuning, StreamOuija, DatagramOuija, \
-    StreamConnector, DatagramConnector, StreamLink, DatagramLink, StreamRelay, DatagramRelay, StreamProxy, DatagramProxy
+from ouija import Telemetry, StreamTuning, DatagramTuning, StreamOuija, DatagramOuija, StreamConnector, \
+    DatagramConnector, StreamLink, DatagramLink, StreamRelay, DatagramRelay, StreamProxy, DatagramProxy, FernetCipher, \
+    SimpleEntropy
+
+
+@pytest.fixture
+def telemetry_test():
+    return Telemetry()
+
+
+@pytest.fixture
+def cipher_test():
+    return FernetCipher(key='bdDmN4VexpDvTrs6gw8xTzaFvIBobFg1Cx2McFB1RmI=')
+
+
+@pytest.fixture
+def entropy_test():
+    return SimpleEntropy(rate=5)
 
 
 @pytest.fixture
@@ -20,24 +35,10 @@ def data_test():
 
 
 @pytest.fixture
-def fernet_test():
-    return Fernet('bdDmN4VexpDvTrs6gw8xTzaFvIBobFg1Cx2McFB1RmI=')
-
-
-@pytest.fixture
-def stream_telemetry_test():
-    return StreamTelemetry()
-
-
-@pytest.fixture
-def datagram_telemetry_test():
-    return DatagramTelemetry()
-
-
-@pytest.fixture
-def stream_tuning_test(fernet_test, token_test):
+def stream_tuning_test(cipher_test, entropy_test, token_test):
     return StreamTuning(
-        fernet=fernet_test,
+        cipher=cipher_test,
+        entropy=entropy_test,
         token=token_test,
         serving_timeout=3.0,
         tcp_buffer=1024,
@@ -47,14 +48,16 @@ def stream_tuning_test(fernet_test, token_test):
 
 
 @pytest.fixture
-def datagram_tuning_test(fernet_test, token_test):
+def datagram_tuning_test(cipher_test, entropy_test, token_test):
     return DatagramTuning(
-        fernet=fernet_test,
+        cipher=cipher_test,
+        entropy=entropy_test,
         token=token_test,
         serving_timeout=3.0,
         tcp_buffer=1024,
         tcp_timeout=1.0,
-        udp_payload=512,
+        udp_min_payload=512,
+        udp_max_payload=1024,
         udp_timeout=0.5,
         udp_retries=5,
         udp_capacity=10,
@@ -66,7 +69,7 @@ class StreamOuijaTest(StreamOuija):
     def __init__(
             self,
             *,
-            telemetry: StreamTelemetry,
+            telemetry: Telemetry,
             tuning: StreamTuning,
             remote_host: Optional[str],
             remote_port: Optional[int],
@@ -85,9 +88,9 @@ class StreamOuijaTest(StreamOuija):
 
 
 @pytest.fixture
-def stream_ouija_test(stream_telemetry_test, stream_tuning_test):
+def stream_ouija_test(telemetry_test, stream_tuning_test):
     return StreamOuijaTest(
-        telemetry=stream_telemetry_test,
+        telemetry=telemetry_test,
         tuning=stream_tuning_test,
         remote_host='example.com',
         remote_port=50000,
@@ -98,7 +101,7 @@ class DatagramOuijaTest(DatagramOuija):
     def __init__(
             self,
             *,
-            telemetry: DatagramTelemetry,
+            telemetry: Telemetry,
             tuning: DatagramTuning,
             remote_host: Optional[str],
             remote_port: Optional[int],
@@ -120,9 +123,9 @@ class DatagramOuijaTest(DatagramOuija):
 
 
 @pytest.fixture
-def datagram_ouija_test(datagram_telemetry_test, datagram_tuning_test):
+def datagram_ouija_test(telemetry_test, datagram_tuning_test):
     return DatagramOuijaTest(
-        telemetry=datagram_telemetry_test,
+        telemetry=telemetry_test,
         tuning=datagram_tuning_test,
         remote_host='example.com',
         remote_port=443,
@@ -130,9 +133,9 @@ def datagram_ouija_test(datagram_telemetry_test, datagram_tuning_test):
 
 
 @pytest.fixture
-def stream_connector_test(stream_telemetry_test, stream_tuning_test):
+def stream_connector_test(telemetry_test, stream_tuning_test):
     return StreamConnector(
-        telemetry=stream_telemetry_test,
+        telemetry=telemetry_test,
         tuning=stream_tuning_test,
         relay=AsyncMock(),
         reader=AsyncMock(),
@@ -141,13 +144,14 @@ def stream_connector_test(stream_telemetry_test, stream_tuning_test):
         proxy_port=50000,
         remote_host='example.com',
         remote_port=443,
+        https=True,
     )
 
 
 @pytest.fixture
-def datagram_connector_test(datagram_telemetry_test, datagram_tuning_test):
+def datagram_connector_test(telemetry_test, datagram_tuning_test):
     return DatagramConnector(
-        telemetry=datagram_telemetry_test,
+        telemetry=telemetry_test,
         tuning=datagram_tuning_test,
         relay=AsyncMock(),
         reader=AsyncMock(),
@@ -156,13 +160,14 @@ def datagram_connector_test(datagram_telemetry_test, datagram_tuning_test):
         proxy_port=50000,
         remote_host='example.com',
         remote_port=443,
+        https=True,
     )
 
 
 @pytest.fixture
-def stream_link_test(stream_telemetry_test, stream_tuning_test):
+def stream_link_test(telemetry_test, stream_tuning_test):
     return StreamLink(
-        telemetry=stream_telemetry_test,
+        telemetry=telemetry_test,
         tuning=stream_tuning_test,
         proxy=AsyncMock(),
         reader=AsyncMock(),
@@ -171,9 +176,9 @@ def stream_link_test(stream_telemetry_test, stream_tuning_test):
 
 
 @pytest.fixture
-def datagram_link_test(datagram_telemetry_test, datagram_tuning_test):
+def datagram_link_test(telemetry_test, datagram_tuning_test):
     return DatagramLink(
-        telemetry=datagram_telemetry_test,
+        telemetry=telemetry_test,
         tuning=datagram_tuning_test,
         proxy=AsyncMock(),
         addr=('127.0.0.1', 60000),
@@ -181,9 +186,9 @@ def datagram_link_test(datagram_telemetry_test, datagram_tuning_test):
 
 
 @pytest.fixture
-def stream_relay_test(stream_telemetry_test, stream_tuning_test):
+def stream_relay_test(telemetry_test, stream_tuning_test):
     return StreamRelay(
-        telemetry=stream_telemetry_test,
+        telemetry=telemetry_test,
         tuning=stream_tuning_test,
         relay_host='127.0.0.1',
         relay_port=9000,
@@ -193,9 +198,9 @@ def stream_relay_test(stream_telemetry_test, stream_tuning_test):
 
 
 @pytest.fixture
-def datagram_relay_test(datagram_telemetry_test, datagram_tuning_test):
+def datagram_relay_test(telemetry_test, datagram_tuning_test):
     return DatagramRelay(
-        telemetry=datagram_telemetry_test,
+        telemetry=telemetry_test,
         tuning=datagram_tuning_test,
         relay_host='127.0.0.1',
         relay_port=9000,
@@ -205,9 +210,9 @@ def datagram_relay_test(datagram_telemetry_test, datagram_tuning_test):
 
 
 @pytest.fixture
-def stream_proxy_test(stream_telemetry_test, stream_tuning_test):
+def stream_proxy_test(telemetry_test, stream_tuning_test):
     return StreamProxy(
-        telemetry=stream_telemetry_test,
+        telemetry=telemetry_test,
         tuning=stream_tuning_test,
         proxy_host='0.0.0.0',
         proxy_port=50000,
@@ -215,9 +220,9 @@ def stream_proxy_test(stream_telemetry_test, stream_tuning_test):
 
 
 @pytest.fixture
-def datagram_proxy_test(datagram_telemetry_test, datagram_tuning_test):
+def datagram_proxy_test(telemetry_test, datagram_tuning_test):
     return DatagramProxy(
-        telemetry=datagram_telemetry_test,
+        telemetry=telemetry_test,
         tuning=datagram_tuning_test,
         proxy_host='0.0.0.0',
         proxy_port=50000,
