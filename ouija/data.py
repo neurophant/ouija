@@ -1,3 +1,4 @@
+import base64
 import re
 import time
 from dataclasses import dataclass, field
@@ -79,6 +80,7 @@ class Message:
 
         if entropy:
             data = entropy.increase(data=data)
+        data = base64.urlsafe_b64decode(data)
         if cipher:
             data = cipher.decrypt(data=data)
 
@@ -95,6 +97,7 @@ class Message:
 
         if cipher:
             data = cipher.encrypt(data=data)
+        data = base64.urlsafe_b64encode(data)
         if entropy:
             data = entropy.decrease(data=data)
 
@@ -104,6 +107,7 @@ class Message:
     def encrypt(*, data: bytes, cipher: Optional[Cipher], entropy: Optional[Entropy]) -> bytes:
         if cipher:
             data = cipher.encrypt(data=data)
+        data = base64.urlsafe_b64encode(data)
         if entropy:
             data = entropy.decrease(data=data)
 
@@ -115,6 +119,7 @@ class Message:
 
         if entropy:
             data = entropy.increase(data=data)
+        data = base64.urlsafe_b64decode(data)
         if cipher:
             data = cipher.decrypt(data=data)
 

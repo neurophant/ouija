@@ -23,7 +23,7 @@ class Config:
     proxy_host: str
     proxy_port: int
     cipher_key: Optional[str]
-    entropy_every: Optional[int]
+    entropy_rate: Optional[int]
     token: str
     serving_timeout: float
     tcp_buffer: int
@@ -50,7 +50,7 @@ class Config:
         self.proxy_port = json_dict.get('proxy_port')
 
         self.cipher_key = json_dict.get('cipher_key', None)
-        self.entropy_every = json_dict.get('entropy_every', None)
+        self.entropy_rate = json_dict.get('entropy_rate', None)
         self.token = json_dict.get('token')
         self.serving_timeout = json_dict.get('serving_timeout')
         self.tcp_buffer = json_dict.get('tcp_buffer')

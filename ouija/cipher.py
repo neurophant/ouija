@@ -1,3 +1,5 @@
+import base64
+
 from cryptography.fernet import Fernet
 
 
@@ -18,7 +20,7 @@ class FernetCipher(Cipher):
         self.fernet = Fernet(self.key)
 
     def encrypt(self, *, data: bytes) -> bytes:
-        return self.fernet.encrypt(data)
+        return base64.urlsafe_b64decode(self.fernet.encrypt(data))
 
     def decrypt(self, *, data: bytes) -> bytes:
-        return self.fernet.decrypt(data)
+        return self.fernet.decrypt(base64.urlsafe_b64encode(data))

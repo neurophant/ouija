@@ -4,7 +4,7 @@ sys.path.append('../')
 import asyncio
 import logging
 
-from ouija import DatagramProxy as Proxy, DatagramTelemetry as Telemetry, DatagramTuning as Tuning, SpaceEntropy, \
+from ouija import DatagramProxy as Proxy, DatagramTelemetry as Telemetry, DatagramTuning as Tuning, SimpleEntropy, \
     FernetCipher
 
 
@@ -18,7 +18,7 @@ logging.basicConfig(
 async def main() -> None:
     tuning = Tuning(
         cipher=FernetCipher(key='bdDmN4VexpDvTrs6gw8xTzaFvIBobFg1Cx2McFB1RmI='),
-        entropy=SpaceEntropy(every=5),
+        entropy=SimpleEntropy(rate=5),
         token='secret',
         serving_timeout=20.0,
         tcp_buffer=1024,

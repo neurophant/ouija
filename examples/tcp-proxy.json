@@ -6,7 +6,7 @@
   "proxy_host": "0.0.0.0",
   "proxy_port": 50000,
   "cipher_key": "bdDmN4VexpDvTrs6gw8xTzaFvIBobFg1Cx2McFB1RmI=",
-  "entropy_every": 5,
+  "entropy_rate": 5,
   "token": "secret",
   "serving_timeout": 20.0,
   "tcp_buffer": 1024,

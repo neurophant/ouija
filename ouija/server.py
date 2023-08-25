@@ -3,7 +3,7 @@ import logging
 import sys
 
 from .cipher import FernetCipher
-from .entropy import SpaceEntropy
+from .entropy import SimpleEntropy
 from .tuning import StreamTuning, DatagramTuning
 from .telemetry import StreamTelemetry, DatagramTelemetry
 from .relay import StreamRelay, DatagramRelay
@@ -24,8 +24,8 @@ async def main_async() -> None:
         level=logging.DEBUG if config.debug else logging.ERROR,
     )
 
-    cipher = FernetCipher(key=config.cipher_key)
-    entropy = SpaceEntropy(every=config.entropy_every) if config.entropy_every else None
+    cipher = FernetCipher(key=config.cipher_key) if config.cipher_key else None
+    entropy = SimpleEntropy(rate=config.entropy_rate) if config.entropy_rate else None
 
     match config.protocol:
         case Protocol.TCP:
