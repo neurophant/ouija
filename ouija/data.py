@@ -74,6 +74,18 @@ class Message:
     host: Optional[str] = None
     port: Optional[int] = None
 
+    def binary(self, *, cipher: Optional[Cipher], entropy: Optional[Entropy]) -> bytes:
+        json_dict = {MAPPING[k]: v for k, v in self.__dict__.items() if v is not None}
+        data = pbjson.dumps(json_dict)
+
+        if cipher:
+            data = cipher.encrypt(data=data)
+        data = base64.urlsafe_b64encode(data)
+        if entropy:
+            data = entropy.decrease(data=data)
+
+        return data + SEPARATOR
+
     @staticmethod
     def message(*, data: bytes, cipher: Optional[Cipher], entropy: Optional[Entropy]) -> 'Message':
         data = data[:-len(SEPARATOR)]
@@ -90,18 +102,6 @@ class Message:
             host=json_dict.get(MAPPING['host'], None),
             port=json_dict.get(MAPPING['port'], None),
         )
-
-    def binary(self, *, cipher: Optional[Cipher], entropy: Optional[Entropy]) -> bytes:
-        json_dict = {MAPPING[k]: v for k, v in self.__dict__.items() if v is not None}
-        data = pbjson.dumps(json_dict)
-
-        if cipher:
-            data = cipher.encrypt(data=data)
-        data = base64.urlsafe_b64encode(data)
-        if entropy:
-            data = entropy.decrease(data=data)
-
-        return data + SEPARATOR
 
     @staticmethod
     def encrypt(*, data: bytes, cipher: Optional[Cipher], entropy: Optional[Entropy]) -> bytes:
@@ -143,6 +143,17 @@ class Packet:
     data: Optional[bytes] = None
     drain: Optional[bool] = None
 
+    def binary(self, *, cipher: Optional[Cipher], entropy: Optional[Entropy]) -> bytes:
+        json_dict = {MAPPING[k]: v for k, v in self.__dict__.items() if v is not None}
+        data = pbjson.dumps(json_dict)
+
+        if cipher:
+            data = cipher.encrypt(data=data)
+        if entropy:
+            data = entropy.decrease(data=data)
+
+        return data
+
     @staticmethod
     def packet(*, data: bytes, cipher: Optional[Cipher], entropy: Optional[Entropy]) -> 'Packet':
         if entropy:
@@ -161,17 +172,6 @@ class Packet:
             data=json_dict.get(MAPPING['data'], None),
             drain=json_dict.get(MAPPING['drain'], None),
         )
-
-    def binary(self, *, cipher: Optional[Cipher], entropy: Optional[Entropy]) -> bytes:
-        json_dict = {MAPPING[k]: v for k, v in self.__dict__.items() if v is not None}
-        data = pbjson.dumps(json_dict)
-
-        if cipher:
-            data = cipher.encrypt(data=data)
-        if entropy:
-            data = entropy.decrease(data=data)
-
-        return data
 
 
 @dataclass(kw_only=True)
