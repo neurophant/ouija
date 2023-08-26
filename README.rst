@@ -1,7 +1,7 @@
 Ouija
 =====
 
-Python relay/proxy server and library to build reliable encrypted TCP/UDP tunnels for TCP traffic
+Python relay/proxy server and library to build reliable encrypted TCP/UDP tunnels with entropy conrol for TCP traffic
 
 |pypi|
 
@@ -11,6 +11,11 @@ Python relay/proxy server and library to build reliable encrypted TCP/UDP tunnel
 
 Features
 --------
+
+* Easy to install, configure and use
+* TCP/UDP tunneling
+* Pluggable traffic ciphers
+* Pluggable traffic entropy control
 
 Hides TCP traffic in encrypted TCP/UDP tunnel between relay and proxy servers
 
@@ -38,7 +43,7 @@ Install
 Usage
 -----
 
-Generate key/token secrets:
+Generate cipher_key/token secrets:
 
 .. code-block:: bash
 
@@ -63,8 +68,9 @@ tcp-relay.json - TCP relay server - HTTP/HTTPS proxy server interface with TCP c
       "relay_port": 9000,
       "proxy_host": "127.0.0.1",
       "proxy_port": 50000,
-      "key": "bdDmN4VexpDvTrs6gw8xTzaFvIBobFg1Cx2McFB1RmI=",
-      "token": "secret",
+      "cipher_key": "bdDmN4VexpDvTrs6gw8xTzaFvIBobFg1Cx2McFB1RmI=",
+      "entropy_rate": 5,
+      "token": "395f249c-343a-4f92-9129-68c6d83b5f55",
       "serving_timeout": 20.0,
       "tcp_buffer": 1024,
       "tcp_timeout": 1.0,
@@ -82,8 +88,9 @@ tcp-proxy.json - TCP-relayed proxy server:
       "monitor": true,
       "proxy_host": "0.0.0.0",
       "proxy_port": 50000,
-      "key": "bdDmN4VexpDvTrs6gw8xTzaFvIBobFg1Cx2McFB1RmI=",
-      "token": "secret",
+      "cipher_key": "bdDmN4VexpDvTrs6gw8xTzaFvIBobFg1Cx2McFB1RmI=",
+      "entropy_rate": 5,
+      "token": "395f249c-343a-4f92-9129-68c6d83b5f55",
       "serving_timeout": 20.0,
       "tcp_buffer": 1024,
       "tcp_timeout": 1.0,
@@ -103,15 +110,17 @@ udp-relay.json - UDP relay server - HTTP/HTTPS proxy server interface with UDP c
       "relay_port": 9000,
       "proxy_host": "127.0.0.1",
       "proxy_port": 50000,
-      "key": "bdDmN4VexpDvTrs6gw8xTzaFvIBobFg1Cx2McFB1RmI=",
-      "token": "secret",
+      "cipher_key": "bdDmN4VexpDvTrs6gw8xTzaFvIBobFg1Cx2McFB1RmI=",
+      "entropy_rate": 5,
+      "token": "395f249c-343a-4f92-9129-68c6d83b5f55",
       "serving_timeout": 20.0,
       "tcp_buffer": 1024,
       "tcp_timeout": 1.0,
-      "udp_payload": 1024,
+      "udp_min_payload": 512,
+      "udp_max_payload": 1024,
       "udp_timeout": 2.0,
       "udp_retries": 5,
-      "udp_capacity": 10000,
+      "udp_capacity": 1000,
       "udp_resend_sleep": 0.25
     }
 
@@ -126,19 +135,27 @@ udp-proxy.json - UDP-relayed proxy server:
       "monitor": true,
       "proxy_host": "0.0.0.0",
       "proxy_port": 50000,
-      "key": "bdDmN4VexpDvTrs6gw8xTzaFvIBobFg1Cx2McFB1RmI=",
-      "token": "secret",
+      "cipher_key": "bdDmN4VexpDvTrs6gw8xTzaFvIBobFg1Cx2McFB1RmI=",
+      "entropy_rate": 5,
+      "token": "395f249c-343a-4f92-9129-68c6d83b5f55",
       "serving_timeout": 20.0,
       "tcp_buffer": 1024,
       "tcp_timeout": 1.0,
-      "udp_payload": 1024,
+      "udp_min_payload": 512,
+      "udp_max_payload": 1024,
       "udp_timeout": 2.0,
       "udp_retries": 5,
-      "udp_capacity": 10000,
+      "udp_capacity": 1000,
       "udp_resend_sleep": 0.25
     }
 
 Relay and proxy setup configuration with supervisord - `ouija-config <https://github.com/neurophant/ouija-config>`_
+
+Cipher and entropy
+------------------
+
+* cipher_key - FernetCipher key - use ouija_secret to generate key
+* entropy_rate - SimpleEntropy rate, when rate=N it means that every Nth byte will be generated and payload size will be increased, rate=5 means 20% payload increase and traffic overhead
 
 Protocols
 ---------
@@ -149,7 +166,9 @@ Protocols
 Entities
 --------
 
-* Tuning - relay-proxy interaction settings
+* Cipher - cipher implementation - FernetCipher out of the box
+* Entropy - entropy control implementation - SimpleEntropy out of the box
+* Tuning - relay/proxy and connector/link interaction settings
 * Relay - HTTPS proxy server interface
 * Connector - relay connector, which communicates with proxy link
 * Proxy - proxy server, which gets requests from relay and sends back responses from remote servers
@@ -158,7 +177,8 @@ Entities
 Tuning - TCP
 ------------
 
-* fernet - Fernet instance with provided secret key - use ouija_secret to generate key
+* cipher - cipher instance, if None then no encryption will be applied
+* entropy - entropy instance, if None then no entropy control will be applied
 * token - your secret token - UUID4 or anything else - use ouija_secret to generate token
 * serving_timeout - timeout for serve/resend workers, 2X for handlers, seconds
 * tcp_buffer - TCP buffer size, bytes
@@ -168,12 +188,14 @@ Tuning - TCP
 Tuning - UDP
 ------------
 
-* fernet - Fernet instance with provided secret key - use ouija_secret to generate key
+* cipher - cipher instance, if None then no encryption will be applied
+* entropy - entropy instance, if None then no entropy control will be applied
 * token - your secret token - UUID4 or anything else - use ouija_secret to generate token
 * serving_timeout - timeout for serve/resend workers, 2X for handlers, seconds
 * tcp_buffer - TCP buffer size, bytes
 * tcp_timeout - TCP awaiting timeout, seconds
-* udp_payload - UDP payload size, bytes
+* udp_min_payload - UDP min payload size, bytes
+* udp_max_payload - UDP max payload size, bytes
 * udp_timeout - UDP awaiting timeout, seconds
 * udp_retries - UDP max retry count per interaction
 * udp_capacity - UDP send/receive buffer capacity - max packet count
@@ -187,16 +209,16 @@ stream-relay.py - TCP relay server - HTTP/HTTPS proxy server interface with TCP 
 .. code-block:: python
 
     import asyncio
+    import logging
 
-    from cryptography.fernet import Fernet
-
-    from ouija import StreamRelay as Relay, StreamTuning as Tuning, StreamTelemetry as Telemetry
+    from ouija import StreamRelay as Relay, StreamTuning as Tuning, Telemetry, SimpleEntropy, FernetCipher
 
 
     async def main() -> None:
         tuning = Tuning(
-            fernet=Fernet('bdDmN4VexpDvTrs6gw8xTzaFvIBobFg1Cx2McFB1RmI='),
-            token='secret',
+            cipher=FernetCipher(key='bdDmN4VexpDvTrs6gw8xTzaFvIBobFg1Cx2McFB1RmI='),
+            entropy=SimpleEntropy(rate=5),
+            token='395f249c-343a-4f92-9129-68c6d83b5f55',
             serving_timeout=20.0,
             tcp_buffer=1024,
             tcp_timeout=1.0,
@@ -224,16 +246,16 @@ stream-proxy.py - TCP-relayed proxy server:
 .. code-block:: python
 
     import asyncio
+    import logging
 
-    from cryptography.fernet import Fernet
-
-    from ouija import StreamProxy as Proxy, StreamTelemetry as Telemetry, StreamTuning as Tuning
+    from ouija import StreamProxy as Proxy, Telemetry, StreamTuning as Tuning, SimpleEntropy, FernetCipher
 
 
     async def main() -> None:
         tuning = Tuning(
-            fernet=Fernet('bdDmN4VexpDvTrs6gw8xTzaFvIBobFg1Cx2McFB1RmI='),
-            token='secret',
+            cipher=FernetCipher(key='bdDmN4VexpDvTrs6gw8xTzaFvIBobFg1Cx2McFB1RmI='),
+            entropy=SimpleEntropy(rate=5),
+            token='395f249c-343a-4f92-9129-68c6d83b5f55',
             serving_timeout=20.0,
             tcp_buffer=1024,
             tcp_timeout=1.0,
@@ -259,20 +281,21 @@ datagram-relay.py - UDP relay server - HTTPS proxy server interface with UDP con
 .. code-block:: python
 
     import asyncio
+    import logging
 
-    from cryptography.fernet import Fernet
-
-    from ouija import DatagramRelay as Relay, DatagramTuning as Tuning, DatagramTelemetry as Telemetry
+    from ouija import DatagramRelay as Relay, DatagramTuning as Tuning, Telemetry, SimpleEntropy, FernetCipher
 
 
     async def main() -> None:
         tuning = Tuning(
-            fernet=Fernet('bdDmN4VexpDvTrs6gw8xTzaFvIBobFg1Cx2McFB1RmI='),
-            token='secret',
+            cipher=FernetCipher(key='bdDmN4VexpDvTrs6gw8xTzaFvIBobFg1Cx2McFB1RmI='),
+            entropy=SimpleEntropy(rate=5),
+            token='395f249c-343a-4f92-9129-68c6d83b5f55',
             serving_timeout=20.0,
             tcp_buffer=1024,
             tcp_timeout=1.0,
-            udp_payload=1024,
+            udp_min_payload=512,
+            udp_max_payload=1024,
             udp_timeout=2.0,
             udp_retries=5,
             udp_capacity=10000,
@@ -300,20 +323,21 @@ datagram-proxy.py - UDP-relayed proxy server:
 .. code-block:: python
 
     import asyncio
+    import logging
 
-    from cryptography.fernet import Fernet
-
-    from ouija import DatagramProxy as Proxy, DatagramTelemetry as Telemetry, DatagramTuning as Tuning
+    from ouija import DatagramProxy as Proxy, Telemetry, DatagramTuning as Tuning, SimpleEntropy, FernetCipher
 
 
     async def main() -> None:
         tuning = Tuning(
-            fernet=Fernet('bdDmN4VexpDvTrs6gw8xTzaFvIBobFg1Cx2McFB1RmI='),
-            token='secret',
+            cipher=FernetCipher(key='bdDmN4VexpDvTrs6gw8xTzaFvIBobFg1Cx2McFB1RmI='),
+            entropy=SimpleEntropy(rate=5),
+            token='395f249c-343a-4f92-9129-68c6d83b5f55',
             serving_timeout=20.0,
             tcp_buffer=1024,
             tcp_timeout=1.0,
-            udp_payload=1024,
+            udp_min_payload=512,
+            udp_max_payload=1024,
             udp_timeout=2.0,
             udp_retries=5,
             udp_capacity=10000,
