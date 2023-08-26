@@ -299,7 +299,7 @@ datagram-relay.py - UDP relay server - HTTPS proxy server interface with UDP con
             udp_timeout=2.0,
             udp_retries=5,
             udp_capacity=10000,
-            udp_resend_sleep=0.1,
+            udp_resend_sleep=0.25,
         )
         relay = Relay(
             telemetry=Telemetry(),
@@ -341,7 +341,7 @@ datagram-proxy.py - UDP-relayed proxy server:
             udp_timeout=2.0,
             udp_retries=5,
             udp_capacity=10000,
-            udp_resend_sleep=0.1,
+            udp_resend_sleep=0.25,
         )
         proxy = Proxy(
             telemetry=Telemetry(),
