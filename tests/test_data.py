@@ -42,15 +42,15 @@ def test_parser():
     Packet(phase=Phase.CLOSE, ack=False),
     Packet(phase=Phase.CLOSE, ack=True),
 ))
-def test_packet(packet, fernet_test):
-    encoded = packet.binary(fernet=fernet_test)
-    decoded = Packet.packet(data=encoded, fernet=fernet_test)
+def test_packet(packet, cipher_test, entropy_test):
+    encoded = packet.binary(cipher=cipher_test, entropy=entropy_test)
+    decoded = Packet.packet(data=encoded, cipher=cipher_test, entropy=entropy_test)
 
     assert decoded == packet
 
 
-def test_message_encrypt_decrypt(fernet_test, data_test):
-    encrypted = Message.encrypt(data=data_test, fernet=fernet_test)
-    decrypted = Message.decrypt(data=encrypted, fernet=fernet_test)
+def test_message_encrypt_decrypt(data_test, cipher_test, entropy_test):
+    encrypted = Message.encrypt(data=data_test, cipher=cipher_test, entropy=entropy_test)
+    decrypted = Message.decrypt(data=encrypted, cipher=cipher_test, entropy=entropy_test)
 
     assert decrypted == data_test
