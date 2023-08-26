@@ -7,6 +7,8 @@ from .entropy import Entropy
 
 @dataclass(kw_only=True)
 class StreamTuning:
+    """TCP relay/proxy and connector/link tuning"""
+
     cipher: Optional[Cipher]
     entropy: Optional[Entropy]
     token: str
@@ -18,6 +20,8 @@ class StreamTuning:
 
 @dataclass(kw_only=True)
 class DatagramTuning:
+    """UDP relay/proxy and connector/link tuning"""
+
     cipher: Optional[Cipher]
     entropy: Optional[Entropy]
     token: str

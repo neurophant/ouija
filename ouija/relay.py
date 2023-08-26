@@ -10,6 +10,8 @@ from .log import logger
 
 
 class Relay:
+    """Base class for TCP/UDP relay server"""
+
     telemetry: Telemetry
     tuning: Union[StreamTuning, DatagramTuning]
     relay_host: str
@@ -47,9 +49,10 @@ class Relay:
     ) -> None:
         """Request handler - should be overridden with protocol-based implementation
         :returns: None"""
+
         raise NotImplementedError
 
-    async def connect_wrapped(self, *, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
+    async def connect_wrapped(self, *, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
         data = await reader.readuntil(SEPARATOR)
         request = Parser(data=data)
         if request.error:
@@ -67,7 +70,7 @@ class Relay:
             https=True if request.method == CONNECT else False,
         )
 
-    async def connect(self, *, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
+    async def connect(self, *, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
         try:
             await asyncio.wait_for(self.connect_wrapped(reader=reader, writer=writer), self.tuning.serving_timeout * 2)
         except TimeoutError:
@@ -104,6 +107,8 @@ class Relay:
 
 
 class StreamRelay(Relay):
+    """TCP relay server"""
+
     async def request_handler(
             self,
             *,
@@ -129,6 +134,8 @@ class StreamRelay(Relay):
 
 
 class DatagramRelay(Relay):
+    """UDP relay server"""
+
     async def request_handler(
             self,
             *,

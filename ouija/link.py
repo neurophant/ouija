@@ -13,6 +13,8 @@ if TYPE_CHECKING:   # pragma: no cover
 
 
 class StreamLink(StreamOuija):
+    """TCP link"""
+
     proxy: 'StreamProxy'
     uid: str
 
@@ -65,6 +67,8 @@ class StreamLink(StreamOuija):
 
 
 class DatagramLink(DatagramOuija):
+    """UDP link"""
+
     proxy: 'DatagramProxy'
     addr: tuple[str, int]
 

@@ -9,6 +9,8 @@ from .log import logger
 
 
 class Proxy:
+    """Base class for TCP/UDP proxy server"""
+
     telemetry: Telemetry
     tuning: Union[StreamTuning, DatagramTuning]
     proxy_host: str
@@ -18,6 +20,7 @@ class Proxy:
     async def serve(self) -> None:
         """Proxy server entry point - should be overridden with protocol-based implementation
         :returns: None"""
+
         raise NotImplementedError
 
     async def debug(self) -> None:    # pragma: no cover
@@ -33,6 +36,8 @@ class Proxy:
 
 
 class StreamProxy(Proxy):
+    """TCP proxy server"""
+
     def __init__(
             self,
             *,
@@ -47,7 +52,7 @@ class StreamProxy(Proxy):
         self.proxy_port = proxy_port
         self.links = dict()
 
-    async def link_wrapped(self, *, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
+    async def link_wrapped(self, *, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
         link = StreamLink(
             telemetry=self.telemetry,
             tuning=self.tuning,
@@ -57,7 +62,7 @@ class StreamProxy(Proxy):
         )
         await link.serve()
 
-    async def link(self, *, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
+    async def link(self, *, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
         try:
             await asyncio.wait_for(self.link_wrapped(reader=reader, writer=writer), self.tuning.serving_timeout * 2)
         except TimeoutError:
@@ -80,6 +85,8 @@ class StreamProxy(Proxy):
 
 
 class DatagramProxy(Proxy, asyncio.DatagramProtocol):
+    """UDP proxy server"""
+
     transport: Optional[asyncio.DatagramTransport]
 
     def __init__(

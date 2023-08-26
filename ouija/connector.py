@@ -15,6 +15,8 @@ if TYPE_CHECKING:   # pragma: no cover
 
 
 class StreamConnector(StreamOuija):
+    """TCP connector"""
+
     relay: 'StreamRelay'
     uid: str
     proxy_host: str
@@ -80,6 +82,8 @@ class StreamConnector(StreamOuija):
 
 
 class DatagramConnector(DatagramOuija, asyncio.DatagramProtocol):
+    """UDP connector"""
+
     transport: Optional[asyncio.DatagramTransport]
     relay: 'DatagramRelay'
     uid: str

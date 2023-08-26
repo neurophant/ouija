@@ -7,6 +7,8 @@ from .entropy import Entropy
 
 @dataclass(kw_only=True)
 class Telemetry:
+    """Telemetry collector"""
+
     active: int = 0
     opened: int = 0
     closed: int = 0

@@ -2,6 +2,8 @@ import numpy as np
 
 
 class Entropy:
+    """Base class for entropy implementation"""
+
     @staticmethod
     def calculate(*, data: bytes) -> float:
         array = np.frombuffer(data, dtype='B')
@@ -17,9 +19,11 @@ class Entropy:
 
 
 class SimpleEntropy(Entropy):
+    """Simple entropy"""
+
     rate: int
 
-    def __init__(self, *, rate: int):
+    def __init__(self, *, rate: int) -> None:
         self.rate = rate
 
     def decrease(self, *, data: bytes) -> bytes:

@@ -11,6 +11,8 @@ from .log import logger
 
 
 class StreamOuija:
+    """Core ouija class for TCP connector/link"""
+
     telemetry: Telemetry
     tuning: StreamTuning
     crypt: bool
@@ -133,6 +135,8 @@ class StreamOuija:
 
 
 class DatagramOuija:
+    """Core ouija class for UDP connector/link"""
+
     telemetry: Telemetry
     tuning: DatagramTuning
     reader: Optional[asyncio.StreamReader]

@@ -14,6 +14,8 @@ class Protocol(StrEnum):
 
 
 class Config:
+    """Relay/proxy config"""
+
     protocol: Protocol
     mode: Mode
     debug: bool

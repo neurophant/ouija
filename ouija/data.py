@@ -19,6 +19,8 @@ CONNECTION_ESTABLISHED = b'HTTP/1.1 200 Connection Established\r\n\r\n'
 
 
 class Parser:
+    """Raw HTTP parser"""
+
     pattern = re.compile(
         br'(?P<method>[a-zA-Z]+) '
         br'(?P<uri>(\w+://)'
@@ -70,6 +72,8 @@ MAPPING = {
 
 @dataclass(kw_only=True)
 class Message:
+    """TCP message"""
+
     token: str
     host: Optional[str] = None
     port: Optional[int] = None
@@ -134,6 +138,8 @@ class Phase(IntEnum):
 
 @dataclass(kw_only=True)
 class Packet:
+    """UDP packet"""
+
     phase: Phase
     ack: bool
     token: Optional[str] = None

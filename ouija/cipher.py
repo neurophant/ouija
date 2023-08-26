@@ -4,6 +4,8 @@ from cryptography.fernet import Fernet
 
 
 class Cipher:
+    """Base class for cipher implementation"""
+
     def encrypt(self, *, data: bytes) -> bytes:
         raise NotImplementedError
 
@@ -12,6 +14,8 @@ class Cipher:
 
 
 class FernetCipher(Cipher):
+    """Fernet cipher"""
+
     key: str
     fernet: Fernet
 
