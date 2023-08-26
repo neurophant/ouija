@@ -155,7 +155,7 @@ Cipher and entropy
 ------------------
 
 * cipher_key - FernetCipher key - use ouija_secret to generate key
-* entropy_rate - SimpleEntropy rate, when rate=N it means that every Nth byte will be generated and payload size will be increased, rate=5 means 20% payload increase and traffic overhead
+* entropy_rate - SimpleEntropy rate, when rate=N every Nth byte will be generated and payload size will increase, rate=5 means 20% traffic overhead
 
 Protocols
 ---------
