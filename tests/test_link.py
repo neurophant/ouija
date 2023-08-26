@@ -84,12 +84,14 @@ async def test_datagram_link_on_close(datagram_link_test, token_test):
 async def test_stream_link_on_serve(
         stream_link_test,
         token_test,
-        fernet_test,
         data_test,
         mocker: MockerFixture,
 ):
     mocked_wait_for = mocker.patch('ouija.link.asyncio.wait_for')
-    mocked_wait_for.return_value = Message(token=token_test, host='example.com', port=443).binary(fernet=fernet_test)
+    mocked_wait_for.return_value = Message(token=token_test, host='example.com', port=443).binary(
+        cipher=stream_link_test.tuning.cipher,
+        entropy=stream_link_test.tuning.entropy,
+    )
     mocked_open_connection = mocker.patch('ouija.link.asyncio.open_connection')
     mocked_open_connection.return_value = (AsyncMock(), AsyncMock())
 
@@ -119,9 +121,12 @@ async def test_stream_link_on_serve_timeouterror(stream_link_test, mocker: Mocke
 
 @pytest.mark.asyncio
 @pytest.mark.xfail(raises=TokenError)
-async def test_stream_link_on_serve_tokenerror(stream_link_test, fernet_test, mocker: MockerFixture):
+async def test_stream_link_on_serve_tokenerror(stream_link_test, mocker: MockerFixture):
     mocked_wait_for = mocker.patch('ouija.link.asyncio.wait_for')
-    mocked_wait_for.return_value = Message(token='invalid', host='example.com', port=443).binary(fernet=fernet_test)
+    mocked_wait_for.return_value = Message(token='invalid', host='example.com', port=443).binary(
+        cipher=stream_link_test.tuning.cipher,
+        entropy=stream_link_test.tuning.entropy,
+    )
     mocked_open_connection = mocker.patch('ouija.link.asyncio.open_connection')
     mocked_open_connection.return_value = (AsyncMock(), AsyncMock())
 
