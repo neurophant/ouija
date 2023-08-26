@@ -11,7 +11,7 @@ with open(path.join(here, 'README.rst'), encoding='utf-8') as f:
 setup(
     name='ouija',
     version='1.3.0',
-    description='Python relay/proxy server and library to build reliable encrypted TCP/UDP tunnels with entropy conrol for TCP traffic',
+    description='Python relay/proxy server and library to build reliable encrypted TCP/UDP tunnels with entropy control for TCP traffic',
     long_description=long_description,
     url='https://github.com/neurophant/ouija/',
     author='Anton Smolin',

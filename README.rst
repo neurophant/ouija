@@ -1,7 +1,7 @@
 Ouija
 =====
 
-Python relay/proxy server and library to build reliable encrypted TCP/UDP tunnels with entropy conrol for TCP traffic
+Python relay/proxy server and library to build reliable encrypted TCP/UDP tunnels with entropy control for TCP traffic
 
 |pypi|
 
