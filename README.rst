@@ -5,10 +5,9 @@ Python relay/proxy server and library to build reliable encrypted TCP/UDP tunnel
 
 |pypi|
 
-.. |pypi| image:: https://badge.fury.io/py/ouija@2x.png
+.. |pypi| image:: https://badge.fury.io/py/ouija.svg
     :target: https://badge.fury.io/py/ouija
     :alt: pypi version
-    :width: 120
 
 Features
 --------
