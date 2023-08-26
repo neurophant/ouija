@@ -1,4 +1,5 @@
 import json
+import sys
 from unittest.mock import AsyncMock
 
 import pytest
@@ -15,8 +16,9 @@ async def test_stream_relay(tmp_path, config_stream_relay_dict_test, mocker: Moc
     stream_relay_test.serve = AsyncMock()
     path = tmp_path / 'config.json'
     path.write_text(data=json.dumps(config_stream_relay_dict_test))
+    sys.argv = [None, str(path)]
 
-    await main_async(path=str(path))
+    await main_async()
 
     stream_relay_test.debug.assert_called()
     stream_relay_test.serve.assert_awaited()
@@ -30,8 +32,9 @@ async def test_stream_proxy(tmp_path, config_stream_proxy_dict_test, mocker: Moc
     stream_proxy_test.serve = AsyncMock()
     path = tmp_path / 'config.json'
     path.write_text(data=json.dumps(config_stream_proxy_dict_test))
+    sys.argv = [None, str(path)]
 
-    await main_async(path=str(path))
+    await main_async()
 
     stream_proxy_test.debug.assert_called()
     stream_proxy_test.serve.assert_awaited()
@@ -45,8 +48,9 @@ async def test_datagram_relay(tmp_path, config_datagram_relay_dict_test, mocker:
     datagram_relay_test.serve = AsyncMock()
     path = tmp_path / 'config.json'
     path.write_text(data=json.dumps(config_datagram_relay_dict_test))
+    sys.argv = [None, str(path)]
 
-    await main_async(path=str(path))
+    await main_async()
 
     datagram_relay_test.debug.assert_called()
     datagram_relay_test.serve.assert_awaited()
@@ -60,8 +64,9 @@ async def test_datagram_proxy(tmp_path, config_datagram_proxy_dict_test, mocker:
     datagram_proxy_test.serve = AsyncMock()
     path = tmp_path / 'config.json'
     path.write_text(data=json.dumps(config_datagram_proxy_dict_test))
+    sys.argv = [None, str(path)]
 
-    await main_async(path=str(path))
+    await main_async()
 
     datagram_proxy_test.debug.assert_called()
     datagram_proxy_test.serve.assert_awaited()
