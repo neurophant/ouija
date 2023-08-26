@@ -2,7 +2,6 @@ import asyncio
 from unittest.mock import AsyncMock
 
 import pytest
-from pytest_mock import MockerFixture
 
 from ouija import Packet, Phase
 from ouija.exception import SendRetryError, TokenError, OnOpenError, OnServeError, BufOverloadError
@@ -84,7 +83,10 @@ async def test_datagram_ouija_process_wrapped_open(datagram_ouija_test, token_te
         port=443,
     )
 
-    await datagram_ouija_test.process_wrapped(data=packet.binary(fernet=datagram_ouija_test.tuning.fernet))
+    await datagram_ouija_test.process_wrapped(data=packet.binary(
+        cipher=datagram_ouija_test.tuning.cipher,
+        entropy=datagram_ouija_test.tuning.entropy,
+    ))
 
     datagram_ouija_test.on_open.assert_awaited()
 
@@ -101,7 +103,10 @@ async def test_datagram_ouija_process_wrapped_open_tokenerror(datagram_ouija_tes
         port=443,
     )
 
-    await datagram_ouija_test.process_wrapped(data=packet.binary(fernet=datagram_ouija_test.tuning.fernet))
+    await datagram_ouija_test.process_wrapped(data=packet.binary(
+        cipher=datagram_ouija_test.tuning.cipher,
+        entropy=datagram_ouija_test.tuning.entropy,
+    ))
 
 
 @pytest.mark.asyncio
@@ -117,7 +122,10 @@ async def test_datagram_ouija_process_wrapped_open_onopenerror(datagram_ouija_te
         port=443,
     )
 
-    await datagram_ouija_test.process_wrapped(data=packet.binary(fernet=datagram_ouija_test.tuning.fernet))
+    await datagram_ouija_test.process_wrapped(data=packet.binary(
+        cipher=datagram_ouija_test.tuning.cipher,
+        entropy=datagram_ouija_test.tuning.entropy,
+    ))
 
     datagram_ouija_test.on_open.assert_awaited()
 
@@ -132,7 +140,10 @@ async def test_datagram_ouija_process_wrapped_data_ack(datagram_ouija_test):
         seq=0,
     )
 
-    await datagram_ouija_test.process_wrapped(data=packet.binary(fernet=datagram_ouija_test.tuning.fernet))
+    await datagram_ouija_test.process_wrapped(data=packet.binary(
+        cipher=datagram_ouija_test.tuning.cipher,
+        entropy=datagram_ouija_test.tuning.entropy,
+    ))
 
     datagram_ouija_test.sent_buf.pop.assert_called()
 
@@ -149,7 +160,10 @@ async def test_datagram_ouija_process_wrapped_data(datagram_ouija_test, data_tes
         drain=True,
     )
 
-    await datagram_ouija_test.process_wrapped(data=packet.binary(fernet=datagram_ouija_test.tuning.fernet))
+    await datagram_ouija_test.process_wrapped(data=packet.binary(
+        cipher=datagram_ouija_test.tuning.cipher,
+        entropy=datagram_ouija_test.tuning.entropy,
+    ))
 
     datagram_ouija_test.send_packet.assert_awaited()
     datagram_ouija_test.writer.write.assert_called()
@@ -167,7 +181,10 @@ async def test_datagram_ouija_process_wrapped_data_not_opened(datagram_ouija_tes
         drain=False,
     )
 
-    await datagram_ouija_test.process_wrapped(data=packet.binary(fernet=datagram_ouija_test.tuning.fernet))
+    await datagram_ouija_test.process_wrapped(data=packet.binary(
+        cipher=datagram_ouija_test.tuning.cipher,
+        entropy=datagram_ouija_test.tuning.entropy,
+    ))
 
     datagram_ouija_test.send_packet.assert_not_awaited()
     datagram_ouija_test.writer.write.assert_not_called()
@@ -187,7 +204,10 @@ async def test_datagram_ouija_process_wrapped_data_write_closed(datagram_ouija_t
         drain=True,
     )
 
-    await datagram_ouija_test.process_wrapped(data=packet.binary(fernet=datagram_ouija_test.tuning.fernet))
+    await datagram_ouija_test.process_wrapped(data=packet.binary(
+        cipher=datagram_ouija_test.tuning.cipher,
+        entropy=datagram_ouija_test.tuning.entropy,
+    ))
 
     datagram_ouija_test.send_packet.assert_awaited()
     datagram_ouija_test.writer.write.assert_not_called()
@@ -206,7 +226,10 @@ async def test_datagram_ouija_process_wrapped_seq(datagram_ouija_test, data_test
         drain=True,
     )
 
-    await datagram_ouija_test.process_wrapped(data=packet.binary(fernet=datagram_ouija_test.tuning.fernet))
+    await datagram_ouija_test.process_wrapped(data=packet.binary(
+        cipher=datagram_ouija_test.tuning.cipher,
+        entropy=datagram_ouija_test.tuning.entropy,
+    ))
 
     datagram_ouija_test.send_packet.assert_awaited()
     datagram_ouija_test.writer.write.assert_not_called()
@@ -227,7 +250,10 @@ async def test_datagram_ouija_process_wrapped_bufoverloaderror(datagram_ouija_te
     )
 
     for _ in range(datagram_ouija_test.tuning.udp_capacity):
-        await datagram_ouija_test.process_wrapped(data=packet.binary(fernet=datagram_ouija_test.tuning.fernet))
+        await datagram_ouija_test.process_wrapped(data=packet.binary(
+            cipher=datagram_ouija_test.tuning.cipher,
+            entropy=datagram_ouija_test.tuning.entropy,
+        ))
         packet.seq += 1
 
 
@@ -239,7 +265,10 @@ async def test_datagram_ouija_process_wrapped_close_ack(datagram_ouija_test):
         ack=True,
     )
 
-    await datagram_ouija_test.process_wrapped(data=packet.binary(fernet=datagram_ouija_test.tuning.fernet))
+    await datagram_ouija_test.process_wrapped(data=packet.binary(
+        cipher=datagram_ouija_test.tuning.cipher,
+        entropy=datagram_ouija_test.tuning.entropy,
+    ))
 
     assert datagram_ouija_test.read_closed.is_set()
 
@@ -253,7 +282,10 @@ async def test_datagram_ouija_process_wrapped_close(datagram_ouija_test):
         ack=False,
     )
 
-    await datagram_ouija_test.process_wrapped(data=packet.binary(fernet=datagram_ouija_test.tuning.fernet))
+    await datagram_ouija_test.process_wrapped(data=packet.binary(
+        cipher=datagram_ouija_test.tuning.cipher,
+        entropy=datagram_ouija_test.tuning.entropy,
+    ))
 
     assert datagram_ouija_test.write_closed.is_set()
     datagram_ouija_test.send_packet.assert_awaited()
@@ -267,7 +299,10 @@ async def test_datagram_ouija_process_wrapped_close_not_opened(datagram_ouija_te
         ack=False,
     )
 
-    await datagram_ouija_test.process_wrapped(data=packet.binary(fernet=datagram_ouija_test.tuning.fernet))
+    await datagram_ouija_test.process_wrapped(data=packet.binary(
+        cipher=datagram_ouija_test.tuning.cipher,
+        entropy=datagram_ouija_test.tuning.entropy,
+    ))
 
     assert not datagram_ouija_test.read_closed.is_set()
     assert not datagram_ouija_test.write_closed.is_set()
@@ -282,7 +317,10 @@ async def test_datagram_ouija_process(datagram_ouija_test):
         ack=False,
     )
 
-    await datagram_ouija_test.process(data=packet.binary(fernet=datagram_ouija_test.tuning.fernet))
+    await datagram_ouija_test.process(data=packet.binary(
+        cipher=datagram_ouija_test.tuning.cipher,
+        entropy=datagram_ouija_test.tuning.entropy,
+    ))
 
     datagram_ouija_test.process_wrapped.assert_awaited()
 
@@ -297,7 +335,10 @@ async def test_datagram_ouija_process_tokenerror(datagram_ouija_test):
         ack=False,
     )
 
-    await datagram_ouija_test.process(data=packet.binary(fernet=datagram_ouija_test.tuning.fernet))
+    await datagram_ouija_test.process(data=packet.binary(
+        cipher=datagram_ouija_test.tuning.cipher,
+        entropy=datagram_ouija_test.tuning.entropy,
+    ))
 
     datagram_ouija_test.process_wrapped.assert_awaited()
     datagram_ouija_test.close.assert_awaited()
@@ -313,7 +354,10 @@ async def test_datagram_ouija_process_onopenerror(datagram_ouija_test):
         ack=False,
     )
 
-    await datagram_ouija_test.process(data=packet.binary(fernet=datagram_ouija_test.tuning.fernet))
+    await datagram_ouija_test.process(data=packet.binary(
+        cipher=datagram_ouija_test.tuning.cipher,
+        entropy=datagram_ouija_test.tuning.entropy,
+    ))
 
     datagram_ouija_test.process_wrapped.assert_awaited()
     datagram_ouija_test.close.assert_not_awaited()
@@ -329,7 +373,10 @@ async def test_datagram_ouija_process_bufoverloaderror(datagram_ouija_test):
         ack=False,
     )
 
-    await datagram_ouija_test.process(data=packet.binary(fernet=datagram_ouija_test.tuning.fernet))
+    await datagram_ouija_test.process(data=packet.binary(
+        cipher=datagram_ouija_test.tuning.cipher,
+        entropy=datagram_ouija_test.tuning.entropy,
+    ))
 
     datagram_ouija_test.process_wrapped.assert_awaited()
     datagram_ouija_test.close.assert_awaited()
@@ -345,7 +392,10 @@ async def test_datagram_ouija_process_connectionerror(datagram_ouija_test):
         ack=False,
     )
 
-    await datagram_ouija_test.process(data=packet.binary(fernet=datagram_ouija_test.tuning.fernet))
+    await datagram_ouija_test.process(data=packet.binary(
+        cipher=datagram_ouija_test.tuning.cipher,
+        entropy=datagram_ouija_test.tuning.entropy,
+    ))
 
     datagram_ouija_test.process_wrapped.assert_awaited()
 
@@ -360,7 +410,10 @@ async def test_datagram_ouija_process_exception(datagram_ouija_test):
         ack=False,
     )
 
-    await datagram_ouija_test.process(data=packet.binary(fernet=datagram_ouija_test.tuning.fernet))
+    await datagram_ouija_test.process(data=packet.binary(
+        cipher=datagram_ouija_test.tuning.cipher,
+        entropy=datagram_ouija_test.tuning.entropy,
+    ))
 
     datagram_ouija_test.process_wrapped.assert_awaited()
     datagram_ouija_test.close.assert_awaited()
@@ -629,14 +682,18 @@ async def test_datagram_ouija_close_writer_exception(datagram_ouija_test):
 
 
 @pytest.mark.asyncio
-async def test_stream_ouija_forward_wrapped(stream_ouija_test, data_test, fernet_test):
+async def test_stream_ouija_forward_wrapped(stream_ouija_test, data_test):
     async def resetter():
         await asyncio.sleep(3)
         stream_ouija_test.sync.clear()
 
     async def readuntil(*args, **kwargs):
         await asyncio.sleep(0.5)
-        return Message.encrypt(data=data_test, fernet=fernet_test)
+        return Message.encrypt(
+            data=data_test,
+            cipher=stream_ouija_test.tuning.cipher,
+            entropy=stream_ouija_test.tuning.entropy,
+        )
 
     stream_ouija_test.target_reader.readuntil = readuntil
     stream_ouija_test.sync.set()
@@ -679,7 +736,7 @@ async def test_stream_ouija_forward_wrapped_crypt(stream_ouija_test, data_test):
 
 
 @pytest.mark.asyncio
-async def test_stream_ouija_forward_wrapped_timeouterror(stream_ouija_test, data_test, fernet_test):
+async def test_stream_ouija_forward_wrapped_timeouterror(stream_ouija_test, data_test):
     async def resetter():
         await asyncio.sleep(2)
         stream_ouija_test.sync.clear()
@@ -700,7 +757,7 @@ async def test_stream_ouija_forward_wrapped_timeouterror(stream_ouija_test, data
 
 
 @pytest.mark.asyncio
-async def test_stream_ouija_forward_wrapped_incompletereaderror(stream_ouija_test, data_test, fernet_test):
+async def test_stream_ouija_forward_wrapped_incompletereaderror(stream_ouija_test, data_test):
     stream_ouija_test.target_reader.readuntil.side_effect = asyncio.IncompleteReadError(partial=b'', expected=10)
     stream_ouija_test.sync.set()
 
@@ -716,7 +773,7 @@ async def test_stream_ouija_forward_wrapped_incompletereaderror(stream_ouija_tes
 
 
 @pytest.mark.asyncio
-async def test_stream_ouija_forward_wrapped_empty(stream_ouija_test, data_test, fernet_test):
+async def test_stream_ouija_forward_wrapped_empty(stream_ouija_test, data_test):
     async def resetter():
         await asyncio.sleep(3)
         stream_ouija_test.sync.clear()
