@@ -11,12 +11,8 @@ from .proxy import StreamProxy, DatagramProxy
 from .config import Config, Mode, Protocol
 
 
-async def main_async() -> None:
-    if len(sys.argv[1:]) != 1:
-        print('Usage: ouija <config.json>\n')
-        sys.exit(0)
-
-    config = Config(path=sys.argv[1])
+async def main_async(*, path: str) -> None:
+    config = Config(path=path)
 
     logging.basicConfig(
         format='%(asctime)s,%(msecs)03d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s',
@@ -55,7 +51,7 @@ async def main_async() -> None:
                 udp_capacity=config.udp_capacity,
                 udp_resend_sleep=config.udp_resend_sleep,
             )
-        case _:
+        case _:     # pragma: no cover
             raise NotImplementedError
 
     match config.mode:
@@ -75,7 +71,7 @@ async def main_async() -> None:
                 proxy_host=config.proxy_host,
                 proxy_port=config.proxy_port,
             )
-        case _:
+        case _:     # pragma: no cover
             raise NotImplementedError
 
     if config.monitor:
@@ -84,11 +80,15 @@ async def main_async() -> None:
     await server.serve()
 
 
-def main() -> None:
+def main(*, path: str) -> None:     # pragma: no cover
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(main_async())
+    loop.run_until_complete(main_async(path=path))
     loop.run_forever()
 
 
-if __name__ == '__main__':
-    main()
+if __name__ == '__main__':  # pragma: no cover
+    if len(sys.argv[1:]) != 1:
+        print('Usage: ouija <config.json>\n')
+        sys.exit(0)
+
+    main(path=sys.argv[1])

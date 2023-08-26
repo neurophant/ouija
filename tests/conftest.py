@@ -254,3 +254,93 @@ def config_dict_test():
         'udp_capacity': 1000,
         'udp_resend_sleep': 0.25
     }
+
+
+@pytest.fixture
+def config_stream_relay_dict_test():
+    return {
+        'protocol': 'TCP',
+        'mode': 'RELAY',
+        'debug': True,
+        'monitor': True,
+        'relay_host': '127.0.0.1',
+        'relay_port': 9000,
+        'proxy_host': '127.0.0.1',
+        'proxy_port': 50000,
+        'cipher_key': 'bdDmN4VexpDvTrs6gw8xTzaFvIBobFg1Cx2McFB1RmI=',
+        'entropy_rate': 5,
+        'token': '395f249c-343a-4f92-9129-68c6d83b5f55',
+        'serving_timeout': 20.0,
+        'tcp_buffer': 1024,
+        'tcp_timeout': 1.0,
+        'message_timeout': 5.0,
+    }
+
+
+@pytest.fixture
+def config_stream_proxy_dict_test():
+    return {
+        'protocol': 'TCP',
+        'mode': 'PROXY',
+        'debug': True,
+        'monitor': True,
+        'proxy_host': '0.0.0.0',
+        'proxy_port': 50000,
+        'cipher_key': 'bdDmN4VexpDvTrs6gw8xTzaFvIBobFg1Cx2McFB1RmI=',
+        'entropy_rate': 5,
+        'token': '395f249c-343a-4f92-9129-68c6d83b5f55',
+        'serving_timeout': 20.0,
+        'tcp_buffer': 1024,
+        'tcp_timeout': 1.0,
+        'message_timeout': 5.0,
+    }
+
+
+@pytest.fixture
+def config_datagram_relay_dict_test():
+    return {
+        'protocol': 'UDP',
+        'mode': 'RELAY',
+        'debug': True,
+        'monitor': True,
+        'relay_host': '127.0.0.1',
+        'relay_port': 9000,
+        'proxy_host': '127.0.0.1',
+        'proxy_port': 50000,
+        'cipher_key': 'bdDmN4VexpDvTrs6gw8xTzaFvIBobFg1Cx2McFB1RmI=',
+        'entropy_rate': 5,
+        'token': '395f249c-343a-4f92-9129-68c6d83b5f55',
+        'serving_timeout': 20.0,
+        'tcp_buffer': 1024,
+        'tcp_timeout': 1.0,
+        'udp_min_payload': 512,
+        'udp_max_payload': 1024,
+        'udp_timeout': 2.0,
+        'udp_retries': 5,
+        'udp_capacity': 1000,
+        'udp_resend_sleep': 0.25
+    }
+
+
+@pytest.fixture
+def config_datagram_proxy_dict_test():
+    return {
+        'protocol': 'UDP',
+        'mode': 'PROXY',
+        'debug': True,
+        'monitor': True,
+        'proxy_host': '0.0.0.0',
+        'proxy_port': 50000,
+        'cipher_key': 'bdDmN4VexpDvTrs6gw8xTzaFvIBobFg1Cx2McFB1RmI=',
+        'entropy_rate': 5,
+        'token': '395f249c-343a-4f92-9129-68c6d83b5f55',
+        'serving_timeout': 20.0,
+        'tcp_buffer': 1024,
+        'tcp_timeout': 1.0,
+        'udp_min_payload': 512,
+        'udp_max_payload': 1024,
+        'udp_timeout': 2.0,
+        'udp_retries': 5,
+        'udp_capacity': 1000,
+        'udp_resend_sleep': 0.25
+    }
