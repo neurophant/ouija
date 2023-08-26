@@ -120,7 +120,7 @@ udp-relay.json - UDP relay server - HTTP/HTTPS proxy server interface with UDP c
       "udp_max_payload": 1024,
       "udp_timeout": 2.0,
       "udp_retries": 5,
-      "udp_capacity": 1000,
+      "udp_capacity": 10000,
       "udp_resend_sleep": 0.25
     }
 
@@ -145,7 +145,7 @@ udp-proxy.json - UDP-relayed proxy server:
       "udp_max_payload": 1024,
       "udp_timeout": 2.0,
       "udp_retries": 5,
-      "udp_capacity": 1000,
+      "udp_capacity": 10000,
       "udp_resend_sleep": 0.25
     }
 
