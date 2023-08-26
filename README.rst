@@ -19,7 +19,7 @@ Features
 
 Hides TCP traffic in encrypted TCP/UDP tunnel between relay and proxy servers
 
-.. image:: https://raw.githubusercontent.com/neurophant/ouija/1.3.0/ouija.png
+.. image:: https://raw.githubusercontent.com/neurophant/ouija/main/ouija.png
     :alt: TCP/UDP tunneling
     :width: 800
 
