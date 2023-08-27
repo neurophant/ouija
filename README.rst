@@ -150,7 +150,7 @@ udp-proxy.json - UDP-relayed proxy server:
       "udp_resend_sleep": 0.25
     }
 
-Relay and proxy setup configuration with supervisord - `ouija-config <https://github.com/neurophant/ouija-config>`_
+Relay and proxy setup configuration with supervisor and nginx - `ouija-config <https://github.com/neurophant/ouija-config>`_
 
 Cipher and entropy
 ------------------
