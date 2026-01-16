@@ -1,7 +1,7 @@
 THIS PROJECT IS DEPRECATED
 ==========================
 
-.. danger::
+.. warning::
 
     **This project is no longer maintained!**
 
