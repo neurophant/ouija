@@ -1,9 +1,18 @@
+THIS PROJECT IS DEPRECATED
+==========================
+
+.. danger::
+
+    **This project is no longer maintained!**
+
+    Please use the new Go implementation: `Gouija <https://github.com/neurophant/gouija>`_
+
+    **No new features or bug fixes will be added to this repository.**
+
+----
+
 Ouija
 =====
-
-.. warning::
-
-    **DEPRECATED**: This project is no longer maintained. Please use `Gouija <https://github.com/neurophant/gouija>`_ instead.
 
 Python relay/proxy server and library to build reliable encrypted TCP/UDP tunnels with entropy control for TCP traffic
 
