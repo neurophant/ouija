@@ -1,6 +1,10 @@
 Ouija
 =====
 
+.. warning::
+
+    **DEPRECATED**: This project is no longer maintained. Please use `Gouija <https://github.com/neurophant/gouija>`_ instead.
+
 Python relay/proxy server and library to build reliable encrypted TCP/UDP tunnels with entropy control for TCP traffic
 
 |pypi|
